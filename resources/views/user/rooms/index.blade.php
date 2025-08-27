@@ -168,7 +168,7 @@
                         @if(request()->hasAny(['check_in', 'check_out', 'occupancy', 'room_type']))
                             <div class="mt-4 text-center">
                                 <p class="mb-4">{{ __('Would you like to join our waitlist?') }}</p>
-                                <x-secondary-button onclick="window.location='{{ route('user.waitlist.create', request()->all()) }}'">
+                                <x-secondary-button onclick="window.location='{{ route('user.waitlist.create', ['room_type_id' => request('room_type')] + request()->all()) }}'">
                                     {{ __('Join Waitlist') }}
                                 </x-secondary-button>
                             </div>

@@ -40,7 +40,8 @@
                                 <x-input-label for="preferred_check_in" :value="__('Preferred Check In')" />
                                 <x-text-input id="preferred_check_in" type="date" name="preferred_check_in" 
                                     :value="old('preferred_check_in', request('check_in'))" 
-                                    required class="mt-1 block w-full" />
+                                    required class="mt-1 block w-full" 
+                                    min="{{ date('Y-m-d') }}" />
                                 <x-input-error :messages="$errors->get('preferred_check_in')" class="mt-2" />
                             </div>
 
@@ -48,8 +49,12 @@
                                 <x-input-label for="preferred_check_out" :value="__('Preferred Check Out')" />
                                 <x-text-input id="preferred_check_out" type="date" name="preferred_check_out" 
                                     :value="old('preferred_check_out', request('check_out'))" 
-                                    required class="mt-1 block w-full" />
+                                    required class="mt-1 block w-full" 
+                                    min="{{ date('Y-m-d', strtotime('+1 day')) }}" />
                                 <x-input-error :messages="$errors->get('preferred_check_out')" class="mt-2" />
+                                <div id="checkout-error" class="text-red-600 text-sm mt-1 hidden">
+                                    {{ __('Check-out date must be after check-in date') }}
+                                </div>
                             </div>
 
                             <!-- Guest Information -->
@@ -113,4 +118,72 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkInInput = document.getElementById('preferred_check_in');
+            const checkOutInput = document.getElementById('preferred_check_out');
+            const checkoutError = document.getElementById('checkout-error');
+            const form = document.querySelector('form');
+            const submitButton = form.querySelector('button[type="submit"]');
+
+            function validateDates() {
+                const checkIn = new Date(checkInInput.value);
+                const checkOut = new Date(checkOutInput.value);
+                
+                // Validate date order
+                if (checkOut <= checkIn) {
+                    if (checkoutError) checkoutError.classList.remove('hidden');
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
+                    return false;
+                }
+                
+                // Clear error state
+                if (checkoutError) checkoutError.classList.add('hidden');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                return true;
+            }
+
+            function updateCheckoutMinDate() {
+                if (checkInInput.value) {
+                    const checkInDate = new Date(checkInInput.value);
+                    checkInDate.setDate(checkInDate.getDate() + 1);
+                    const minCheckOut = checkInDate.toISOString().split('T')[0];
+                    checkOutInput.min = minCheckOut;
+                    
+                    // If current checkout is before the new minimum, clear it
+                    if (checkOutInput.value && checkOutInput.value <= checkInInput.value) {
+                        checkOutInput.value = '';
+                    }
+                }
+            }
+
+            // Event listeners
+            checkInInput.addEventListener('change', function() {
+                updateCheckoutMinDate();
+                validateDates();
+            });
+
+            checkOutInput.addEventListener('change', validateDates);
+
+            // Prevent form submission with invalid dates
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    if (!validateDates()) {
+                        e.preventDefault();
+                        checkOutInput.focus();
+                    }
+                });
+            }
+
+            // Initial validation
+            validateDates();
+        });
+    </script>
 </x-app-layout>

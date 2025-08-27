@@ -124,5 +124,8 @@ class DatabaseSeeder extends Seeder
                 }
             }
         }
+
+        // Add sample data for testing
+        $this->call(SampleDataSeeder::class);
     }
 }

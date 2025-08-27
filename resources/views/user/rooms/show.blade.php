@@ -99,45 +99,58 @@
                                     <span class="text-gray-500">/ {{ __('night') }}</span>
                                 </div>
 
-                                <form action="{{ route('user.bookings.create') }}" method="GET" class="space-y-4">
-                                    <input type="hidden" name="room_id" value="{{ $room->id }}">
-                                    
-                                    <div>
-                                        <x-input-label for="check_in" :value="__('Check In')" />
-                                        <x-text-input id="check_in" type="date" name="check_in" 
-                                            :value="request('check_in')" required class="mt-1 block w-full" />
-                                        <x-input-error :messages="$errors->get('check_in')" class="mt-2" />
-                                    </div>
+                                @if($room->status === 'available')
+                                    <form action="{{ route('user.bookings.create') }}" method="GET" class="space-y-4">
+                                        <input type="hidden" name="room" value="{{ $room->id }}">
+                                        <input type="hidden" name="room_id" value="{{ $room->id }}">
+                                        
+                                        <div>
+                                            <x-input-label for="check_in" :value="__('Check In')" />
+                                            <x-text-input id="check_in" type="date" name="check_in" 
+                                                :value="request('check_in')" required class="mt-1 block w-full" 
+                                                min="{{ date('Y-m-d') }}" />
+                                            <x-input-error :messages="$errors->get('check_in')" class="mt-2" />
+                                        </div>
 
-                                    <div>
-                                        <x-input-label for="check_out" :value="__('Check Out')" />
-                                        <x-text-input id="check_out" type="date" name="check_out" 
-                                            :value="request('check_out')" required class="mt-1 block w-full" />
-                                        <x-input-error :messages="$errors->get('check_out')" class="mt-2" />
-                                    </div>
+                                        <div>
+                                            <x-input-label for="check_out" :value="__('Check Out')" />
+                                            <x-text-input id="check_out" type="date" name="check_out" 
+                                                :value="request('check_out')" required class="mt-1 block w-full" 
+                                                min="{{ date('Y-m-d', strtotime('+1 day')) }}" />
+                                            <x-input-error :messages="$errors->get('check_out')" class="mt-2" />
+                                            <div id="checkout-error" class="text-red-600 text-sm mt-1 hidden">
+                                                {{ __('Check-out date must be after check-in date') }}
+                                            </div>
+                                        </div>
 
-                                    <div>
-                                        <x-input-label for="guests" :value="__('Number of Guests')" />
-                                        <select id="guests" name="guests" required 
-                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                            @for ($i = 1; $i <= $room->roomType->max_occupancy; $i++)
-                                                <option value="{{ $i }}" {{ request('guests') == $i ? 'selected' : '' }}>
-                                                    {{ $i }} {{ __('Guest(s)') }}
-                                                </option>
-                                            @endfor
-                                        </select>
-                                    </div>
+                                        <div>
+                                            <x-input-label for="guests" :value="__('Number of Guests')" />
+                                            <select id="guests" name="guests" required 
+                                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                                @for ($i = 1; $i <= $room->roomType->max_occupancy; $i++)
+                                                    <option value="{{ $i }}" {{ request('guests') == $i ? 'selected' : '' }}>
+                                                        {{ $i }} {{ __('Guest(s)') }}
+                                                    </option>
+                                                @endfor
+                                            </select>
+                                        </div>
 
-                                    <div class="pt-4">
-                                        <x-primary-button class="w-full justify-center">
-                                            {{ __('Book Now') }}
-                                        </x-primary-button>
+                                        <div class="pt-4">
+                                            <x-primary-button class="w-full justify-center">
+                                                {{ __('Book Now') }}
+                                            </x-primary-button>
+                                        </div>
+                                    </form>
+                                @else
+                                    <div class="text-center p-4 bg-gray-100 rounded-lg">
+                                        <p class="text-gray-600 mb-2">{{ __('This room is currently') }} {{ strtolower($room->getAvailabilityStatus()) }}</p>
+                                        <p class="text-sm text-gray-500">{{ __('Room Status') }}: {{ __(ucfirst($room->status)) }}</p>
                                     </div>
-                                </form>
+                                @endif
 
-                                @if(!$room->isAvailable())
+                                @if($room->status !== 'available')
                                     <div class="mt-4 text-center">
-                                        <p class="text-gray-600 mb-2">{{ __('Room not available for selected dates?') }}</p>
+                                        <p class="text-gray-600 mb-2">{{ __('Room not available') }} - {{ $room->getAvailabilityStatus() }}</p>
                                         <x-secondary-button onclick="window.location='{{ route('user.waitlist.create', ['room_type_id' => $room->roomType->id]) }}'">
                                             {{ __('Join Waitlist') }}
                                         </x-secondary-button>
@@ -150,4 +163,83 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkInInput = document.getElementById('check_in');
+            const checkOutInput = document.getElementById('check_out');
+            const checkoutError = document.getElementById('checkout-error');
+            const bookingForm = checkInInput ? checkInInput.closest('form') : null;
+            const submitButton = bookingForm ? bookingForm.querySelector('button[type="submit"], input[type="submit"], .primary-button') : null;
+
+            function validateDates() {
+                if (!checkInInput || !checkOutInput) return true;
+
+                const checkInDate = new Date(checkInInput.value);
+                const checkOutDate = new Date(checkOutInput.value);
+                
+                if (checkInInput.value && checkOutInput.value) {
+                    if (checkOutDate <= checkInDate) {
+                        if (checkoutError) {
+                            checkoutError.classList.remove('hidden');
+                        }
+                        if (submitButton) {
+                            submitButton.disabled = true;
+                            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                        }
+                        return false;
+                    } else {
+                        if (checkoutError) {
+                            checkoutError.classList.add('hidden');
+                        }
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                        }
+                        return true;
+                    }
+                }
+                return true;
+            }
+
+            function updateCheckOutMin() {
+                if (checkInInput && checkOutInput && checkInInput.value) {
+                    const checkInDate = new Date(checkInInput.value);
+                    const nextDay = new Date(checkInDate);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    
+                    const minCheckOut = nextDay.toISOString().split('T')[0];
+                    checkOutInput.setAttribute('min', minCheckOut);
+                    
+                    // If current checkout is before the new minimum, clear it
+                    if (checkOutInput.value && new Date(checkOutInput.value) <= checkInDate) {
+                        checkOutInput.value = '';
+                    }
+                }
+            }
+
+            if (checkInInput) {
+                checkInInput.addEventListener('change', function() {
+                    updateCheckOutMin();
+                    validateDates();
+                });
+            }
+
+            if (checkOutInput) {
+                checkOutInput.addEventListener('change', validateDates);
+            }
+
+            if (bookingForm) {
+                bookingForm.addEventListener('submit', function(e) {
+                    if (!validateDates()) {
+                        e.preventDefault();
+                        alert('{{ __('Please ensure check-out date is after check-in date') }}');
+                    }
+                });
+            }
+
+            // Initial validation
+            validateDates();
+        });
+    </script>
 </x-app-layout>

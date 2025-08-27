@@ -11,10 +11,12 @@ class RoomStatusHistory extends Model
 
     protected $fillable = [
         'room_id',
+        'status',
         'previous_status',
         'new_status',
         'changed_by',
         'reason',
+        'notes',
         'created_at',
     ];
 
@@ -33,7 +35,7 @@ class RoomStatusHistory extends Model
     /**
      * Get the user who changed the status.
      */
-    public function changedByUser(): BelongsTo
+    public function changedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'changed_by');
     }

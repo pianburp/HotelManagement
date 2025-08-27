@@ -31,6 +31,30 @@ class Booking extends Model
     ];
 
     /**
+     * Accessor for check_in to maintain compatibility
+     */
+    public function getCheckInAttribute()
+    {
+        return $this->check_in_date;
+    }
+
+    /**
+     * Accessor for check_out to maintain compatibility
+     */
+    public function getCheckOutAttribute()
+    {
+        return $this->check_out_date;
+    }
+
+    /**
+     * Accessor for number_of_guests to maintain compatibility
+     */
+    public function getNumberOfGuestsAttribute()
+    {
+        return $this->guests_count;
+    }
+
+    /**
      * Get the user who made the booking.
      */
     public function user(): BelongsTo

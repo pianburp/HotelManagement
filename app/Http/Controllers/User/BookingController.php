@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomType;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -15,11 +16,13 @@ class BookingController extends Controller
      */
     public function index()
     {
-        $rooms = Room::with(['roomType'])
+        $rooms = Room::with(['roomType.translations'])
             ->whereHas('roomType')
+            ->orderBy('room_type_id') // Order by room type to show variety
+            ->orderBy('room_number') // Then by room number
             ->paginate(9);
 
-        $roomTypes = RoomType::all();
+        $roomTypes = RoomType::with('translations')->get();
         $amenities = config('hotel.amenities', []);
 
         // Add status colors for the view
@@ -36,9 +39,35 @@ class BookingController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
-        //
+        $room = Room::with(['roomType.translations'])->findOrFail($request->room);
+        
+        // Calculate booking details if dates are provided
+        $numberOfNights = 0;
+        $subtotal = 0;
+        $taxes = 0;
+        $total = 0;
+        
+        if ($request->filled(['check_in', 'check_out'])) {
+            $checkIn = Carbon::parse($request->check_in);
+            $checkOut = Carbon::parse($request->check_out);
+            
+            if ($checkOut > $checkIn) {
+                $numberOfNights = $checkIn->diffInDays($checkOut);
+                $subtotal = $room->roomType->base_price * $numberOfNights;
+                $taxes = $subtotal * 0.10; // 10% tax rate
+                $total = $subtotal + $taxes;
+            }
+        }
+        
+        return view('user.bookings.create', compact(
+            'room', 
+            'numberOfNights', 
+            'subtotal', 
+            'taxes', 
+            'total'
+        ));
     }
 
     /**
@@ -46,15 +75,113 @@ class BookingController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'room_id' => 'required|exists:rooms,id',
+            'check_in' => 'required|date|after:today',
+            'check_out' => 'required|date|after:check_in',
+            'guests' => 'required|integer|min:1',
+            'guest_name' => 'required|string|max:255',
+            'guest_email' => 'required|email|max:255',
+            'guest_phone' => 'required|string|max:20',
+            'special_requests' => 'nullable|string|max:1000',
+        ]);
+
+        $room = Room::with('roomType')->findOrFail($request->room_id);
+        
+        // Calculate total amount
+        $checkIn = Carbon::parse($request->check_in);
+        $checkOut = Carbon::parse($request->check_out);
+        $nights = $checkIn->diffInDays($checkOut);
+        $totalAmount = $room->roomType->base_price * $nights;
+
+        $booking = Booking::create([
+            'user_id' => auth()->id(),
+            'room_id' => $request->room_id,
+            'check_in' => $request->check_in,
+            'check_out' => $request->check_out,
+            'number_of_guests' => $request->guests,
+            'guest_name' => $request->guest_name,
+            'guest_email' => $request->guest_email,
+            'guest_phone' => $request->guest_phone,
+            'special_requests' => $request->special_requests,
+            'total_amount' => $totalAmount,
+            'status' => 'confirmed',
+        ]);
+
+        return redirect()->route('user.bookings.show', $booking)
+            ->with('success', 'Booking created successfully!');
     }
 
     /**
-     * Display the specified resource.
+     * Display the user's booking history.
      */
-    public function show(Booking $booking)
+    public function history(Request $request)
     {
-        //
+        $query = Booking::with(['room.roomType.translations', 'payments'])
+            ->where('user_id', auth()->id());
+
+        // Apply filters
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->where('check_in', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->where('check_out', '<=', $request->date_to);
+        }
+
+        $bookings = $query->orderBy('created_at', 'desc')->paginate(10);
+
+        return view('user.bookings.history', compact('bookings'));
+    }
+
+    /**
+     * Display the specified booking.
+     */
+    public function showBooking(Booking $booking)
+    {
+        // Ensure user can only view their own bookings
+        if ($booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $booking->load(['room.roomType.translations', 'payments']);
+        
+        return view('user.bookings.show', compact('booking'));
+    }
+
+    /**
+     * Cancel a booking.
+     */
+    public function cancel(Booking $booking)
+    {
+        // Ensure user can only cancel their own bookings
+        if ($booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        // Only allow cancellation of confirmed bookings that haven't started yet
+        if ($booking->status !== 'confirmed' || $booking->check_in->isPast()) {
+            return back()->with('error', 'This booking cannot be cancelled.');
+        }
+
+        $booking->update(['status' => 'cancelled']);
+
+        return redirect()->route('user.bookings.history')
+            ->with('success', 'Booking cancelled successfully.');
+    }
+
+    /**
+     * Show room details.
+     */
+    public function show(Room $room)
+    {
+        $room->load(['roomType.translations', 'roomType.media']);
+        
+        return view('user.rooms.show', compact('room'));
     }
 
     /**
@@ -70,7 +197,7 @@ class BookingController extends Controller
      */
     public function search(Request $request)
     {
-        $query = Room::with(['roomType.media'])
+        $query = Room::with(['roomType.translations', 'roomType.media'])
             ->whereHas('roomType');
 
         // Filter by room type
@@ -124,7 +251,7 @@ class BookingController extends Controller
         }
 
         $rooms = $query->paginate(9)->withQueryString();
-        $roomTypes = RoomType::all();
+        $roomTypes = RoomType::with('translations')->get();
         $amenities = config('hotel.amenities', []);
 
         return view('user.rooms.index', compact('rooms', 'roomTypes', 'amenities'));

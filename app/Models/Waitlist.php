@@ -25,6 +25,30 @@ class Waitlist extends Model
     ];
 
     /**
+     * Accessor for preferred_check_in to maintain compatibility
+     */
+    public function getPreferredCheckInAttribute()
+    {
+        return $this->check_in_date;
+    }
+
+    /**
+     * Accessor for preferred_check_out to maintain compatibility
+     */
+    public function getPreferredCheckOutAttribute()
+    {
+        return $this->check_out_date;
+    }
+
+    /**
+     * Accessor for number_of_guests to maintain compatibility
+     */
+    public function getNumberOfGuestsAttribute()
+    {
+        return $this->guests_count;
+    }
+
+    /**
      * Get the user who is on the waitlist.
      */
     public function user(): BelongsTo

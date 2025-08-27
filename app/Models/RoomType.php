@@ -7,11 +7,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-use Spatie\Translatable\HasTranslations;
 
 class RoomType extends Model implements HasMedia
 {
-    use HasFactory, HasTranslations, InteractsWithMedia;
+    use HasFactory, InteractsWithMedia;
 
     protected $fillable = [
         'code',
@@ -25,11 +24,6 @@ class RoomType extends Model implements HasMedia
         'amenities' => 'array',
         'is_active' => 'boolean',
         'base_price' => 'decimal:2',
-    ];
-
-    public array $translatable = [
-        'name',
-        'description'
     ];
 
     /**
@@ -63,6 +57,24 @@ class RoomType extends Model implements HasMedia
     {
         $locale = $locale ?? app()->getLocale();
         return $this->translations()->where('locale', $locale)->first();
+    }
+
+    /**
+     * Get the name attribute (translated).
+     */
+    public function getNameAttribute(): ?string
+    {
+        $translation = $this->getTranslation();
+        return $translation ? $translation->name : null;
+    }
+
+    /**
+     * Get the description attribute (translated).
+     */
+    public function getDescriptionAttribute(): ?string
+    {
+        $translation = $this->getTranslation();
+        return $translation ? $translation->description : null;
     }
 
     /**
