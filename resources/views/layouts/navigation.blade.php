@@ -15,6 +15,15 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('user.rooms.index')" :active="request()->routeIs('user.rooms.*')">
+                        {{ __('Find Rooms') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('user.bookings.history')" :active="request()->routeIs('user.bookings.*')">
+                        {{ __('My Bookings') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('user.waitlist.index')" :active="request()->routeIs('user.waitlist.*')">
+                        {{ __('Waitlist') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -69,6 +78,15 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('user.rooms.index')" :active="request()->routeIs('user.rooms.*')">
+                {{ __('Find Rooms') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('user.bookings.history')" :active="request()->routeIs('user.bookings.*')">
+                {{ __('My Bookings') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('user.waitlist.index')" :active="request()->routeIs('user.waitlist.*')">
+                {{ __('Waitlist') }}
             </x-responsive-nav-link>
         </div>
 

@@ -12,7 +12,7 @@ This document outlines the comprehensive requirements and specifications for dev
   - Spatie Laravel Translatable (for multi-language support)
   - Spatie Permission (for role management)
   - Redis (for caching)
-- **Database:** MySQL/PostgreSQL
+- **Database:** MySQL
 - **Frontend:** Blade templates with responsive design
 
 ## User Roles

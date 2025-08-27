@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\Translatable\HasTranslations;
 
-class RoomType extends Model
+class RoomType extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, HasTranslations, InteractsWithMedia;
 
     protected $fillable = [
         'code',
@@ -22,6 +25,11 @@ class RoomType extends Model
         'amenities' => 'array',
         'is_active' => 'boolean',
         'base_price' => 'decimal:2',
+    ];
+
+    public array $translatable = [
+        'name',
+        'description'
     ];
 
     /**
@@ -55,5 +63,30 @@ class RoomType extends Model
     {
         $locale = $locale ?? app()->getLocale();
         return $this->translations()->where('locale', $locale)->first();
+    }
+
+    /**
+     * Set translation for a specific locale.
+     */
+    public function setTranslation(string $attribute, string $locale, string $value): self
+    {
+        $translation = $this->getTranslation($locale);
+
+        if ($translation) {
+            $translation->update([$attribute => $value]);
+        } else {
+            $this->translations()->create([
+                'locale' => $locale,
+                $attribute => $value,
+            ]);
+        }
+
+        return $this;
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('images')
+            ->useDisk('public');
     }
 }
