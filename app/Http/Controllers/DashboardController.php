@@ -66,26 +66,29 @@ class DashboardController extends Controller
             'occupied_rooms' => Room::where('status', 'onboard')->count(),
             'reserved_rooms' => Room::where('status', 'reserved')->count(),
             'out_of_service' => Room::where('status', 'closed')->count(),
-            'todays_checkins' => Booking::where('check_in_date', Carbon::today())
+            // Show number of guests (sum of guests_count) for today's check-ins/check-outs so the UI label "guests" matches the value.
+            'todays_checkins' => Booking::whereDate('check_in_date', Carbon::today())
                 ->where('status', 'confirmed')
-                ->count(),
-            'todays_checkouts' => Booking::where('check_out_date', Carbon::today())
+                ->sum('guests_count'),
+            'todays_checkouts' => Booking::whereDate('check_out_date', Carbon::today())
                 ->where('status', 'confirmed')
-                ->count(),
+                ->sum('guests_count'),
             'active_waitlist' => Waitlist::where('status', 'active')->count(),
         ];
 
         $todaysCheckIns = Booking::with(['user', 'room.roomType'])
-            ->where('check_in_date', Carbon::today())
+            ->whereDate('check_in_date', Carbon::today())
             ->where('status', 'confirmed')
             ->get();
 
         $todaysCheckOuts = Booking::with(['user', 'room.roomType'])
-            ->where('check_out_date', Carbon::today())
+            ->whereDate('check_out_date', Carbon::today())
             ->where('status', 'confirmed')
             ->get();
 
-        $roomsNeedingAttention = Room::whereIn('status', ['closed', 'maintenance'])
+        // The rooms table enum currently contains: available, reserved, onboard, closed
+        // 'maintenance' is not present in the migration enum; limit to existing values.
+        $roomsNeedingAttention = Room::whereIn('status', ['closed'])
             ->with('roomType')
             ->get();
 

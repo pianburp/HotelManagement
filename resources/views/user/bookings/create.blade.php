@@ -8,7 +8,7 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <form method="POST" action="{{ route('user.bookings.store') }}" class="p-6">
+                <form method="POST" action="{{ route('user.payments.demo') }}" class="p-6">
                     @csrf
                     <input type="hidden" name="room_id" value="{{ $room->id }}">
 
@@ -236,6 +236,5 @@
             // Calculate on page load if dates are present
             calculateTotal();
         });
-    </script>
     </script>
 </x-app-layout>

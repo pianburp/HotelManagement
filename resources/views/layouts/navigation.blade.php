@@ -15,15 +15,51 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('user.rooms.index')" :active="request()->routeIs('user.rooms.*')">
-                        {{ __('Find Rooms') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('user.bookings.history')" :active="request()->routeIs('user.bookings.*')">
-                        {{ __('My Bookings') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('user.waitlist.index')" :active="request()->routeIs('user.waitlist.*')">
-                        {{ __('Waitlist') }}
-                    </x-nav-link>
+
+                    {{-- Admin links --}}
+                    @role('admin')
+                        <x-nav-link :href="route('admin.room-types.index')" :active="request()->routeIs('admin.room-types.*')">
+                            {{ __('Room Types') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.rooms.index')" :active="request()->routeIs('admin.rooms.*')">
+                            {{ __('Rooms') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.reports.index')" :active="request()->routeIs('admin.reports.*')">
+                            {{ __('Reports') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.waitlist.index')" :active="request()->routeIs('admin.waitlist.*')">
+                            {{ __('Waitlist') }}
+                        </x-nav-link>
+                    @endrole
+
+                    {{-- Staff links --}}
+                    @role('staff')
+                        <x-nav-link :href="route('staff.rooms.index')" :active="request()->routeIs('staff.rooms.*')">
+                            {{ __('Manage Rooms') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('staff.checkin.index')" :active="request()->routeIs('staff.checkin.*')">
+                            {{ __('Check-in') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('staff.checkout.index')" :active="request()->routeIs('staff.checkout.*')">
+                            {{ __('Check-out') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('staff.waitlist.index')" :active="request()->routeIs('staff.waitlist.*')">
+                            {{ __('Waitlist') }}
+                        </x-nav-link>
+                    @endrole
+
+                    {{-- Regular user links --}}
+                    @role('user')
+                        <x-nav-link :href="route('user.rooms.index')" :active="request()->routeIs('user.rooms.*')">
+                            {{ __('Find Rooms') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('user.bookings.history')" :active="request()->routeIs('user.bookings.*')">
+                            {{ __('My Bookings') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('user.waitlist.index')" :active="request()->routeIs('user.waitlist.*')">
+                            {{ __('Waitlist') }}
+                        </x-nav-link>
+                    @endrole
                 </div>
             </div>
 
@@ -79,15 +115,51 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('user.rooms.index')" :active="request()->routeIs('user.rooms.*')">
-                {{ __('Find Rooms') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('user.bookings.history')" :active="request()->routeIs('user.bookings.*')">
-                {{ __('My Bookings') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('user.waitlist.index')" :active="request()->routeIs('user.waitlist.*')">
-                {{ __('Waitlist') }}
-            </x-responsive-nav-link>
+
+            {{-- Admin links (responsive) --}}
+            @role('admin')
+                <x-responsive-nav-link :href="route('admin.room-types.index')" :active="request()->routeIs('admin.room-types.*')">
+                    {{ __('Room Types') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.rooms.index')" :active="request()->routeIs('admin.rooms.*')">
+                    {{ __('Rooms') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.reports.index')" :active="request()->routeIs('admin.reports.*')">
+                    {{ __('Reports') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.waitlist.index')" :active="request()->routeIs('admin.waitlist.*')">
+                    {{ __('Waitlist') }}
+                </x-responsive-nav-link>
+            @endrole
+
+            {{-- Staff links (responsive) --}}
+            @role('staff')
+                <x-responsive-nav-link :href="route('staff.rooms.index')" :active="request()->routeIs('staff.rooms.*')">
+                    {{ __('Manage Rooms') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('staff.checkin.index')" :active="request()->routeIs('staff.checkin.*')">
+                    {{ __('Check-in') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('staff.checkout.index')" :active="request()->routeIs('staff.checkout.*')">
+                    {{ __('Check-out') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('staff.waitlist.index')" :active="request()->routeIs('staff.waitlist.*')">
+                    {{ __('Waitlist') }}
+                </x-responsive-nav-link>
+            @endrole
+
+            {{-- User links (responsive) --}}
+            @role('user')
+                <x-responsive-nav-link :href="route('user.rooms.index')" :active="request()->routeIs('user.rooms.*')">
+                    {{ __('Find Rooms') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('user.bookings.history')" :active="request()->routeIs('user.bookings.*')">
+                    {{ __('My Bookings') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('user.waitlist.index')" :active="request()->routeIs('user.waitlist.*')">
+                    {{ __('Waitlist') }}
+                </x-responsive-nav-link>
+            @endrole
         </div>
 
         <!-- Responsive Settings Options -->

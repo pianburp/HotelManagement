@@ -24,7 +24,8 @@ Route::middleware('auth')->group(function () {
         // Booking Routes
         Route::get('/bookings/create', [App\Http\Controllers\User\BookingController::class, 'create'])->name('bookings.create');
         Route::post('/bookings', [App\Http\Controllers\User\BookingController::class, 'store'])->name('bookings.store');
-        Route::get('/bookings', [App\Http\Controllers\User\BookingController::class, 'history'])->name('bookings.history');
+        Route::get('/bookings', [App\Http\Controllers\User\BookingController::class, 'history'])->name('bookings.index');
+        Route::get('/bookings/history', [App\Http\Controllers\User\BookingController::class, 'history'])->name('bookings.history');
         Route::get('/bookings/{booking}', [App\Http\Controllers\User\BookingController::class, 'showBooking'])->name('bookings.show');
         Route::patch('/bookings/{booking}/cancel', [App\Http\Controllers\User\BookingController::class, 'cancel'])->name('bookings.cancel');
         
@@ -33,6 +34,31 @@ Route::middleware('auth')->group(function () {
         Route::post('/waitlist', [App\Http\Controllers\User\WaitlistController::class, 'store'])->name('waitlist.store');
         Route::get('/waitlist', [App\Http\Controllers\User\WaitlistController::class, 'index'])->name('waitlist.index');
         Route::delete('/waitlist/{waitlist}', [App\Http\Controllers\User\WaitlistController::class, 'destroy'])->name('waitlist.destroy');
+
+        // Payment Demo Routes
+        Route::get('/payments/demo', function () {
+            return view('user.payments.demo');
+        })->name('payments.demo');
+        Route::post('/payments/demo', function () {
+            // Store booking data in session for demo
+            session([
+                'booking.room_type' => request('room_type', 'Deluxe Suite'),
+                'booking.check_in' => request('check_in', date('Y-m-d')),
+                'booking.check_out' => request('check_out', date('Y-m-d', strtotime('+3 days'))),
+                'booking.guests' => request('guests', '2'),
+                'booking.subtotal' => 'RM 600.00',
+                'booking.taxes' => 'RM 60.00',
+                'booking.total' => 'RM 660.00',
+                'booking.payment_method' => request('payment_method', 'Credit Card'),
+            ]);
+            return view('user.payments.demo');
+        })->name('payments.demo');
+        Route::get('/payments/success', function () {
+            return view('user.payments.success');
+        })->name('payments.success');
+        Route::get('/payments/failed', function () {
+            return view('user.payments.failed');
+        })->name('payments.failed');
     });
 
     // Admin Routes

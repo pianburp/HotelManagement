@@ -153,8 +153,8 @@
                                             @php
                                                 $paymentStatusColors = [
                                                     'completed' => 'text-green-600',
-                                                    'pending' => 'text-yellow-600',
                                                     'failed' => 'text-red-600',
+                                                    'refunded' => 'text-orange-600',
                                                 ];
                                                 $paymentStatusColor = $paymentStatusColors[$payment->status] ?? 'text-gray-600';
                                             @endphp

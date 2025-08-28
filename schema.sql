@@ -82,7 +82,7 @@ CREATE TABLE payments (
     amount DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'USD',
     transaction_id VARCHAR(255),
-    payment_status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
+    payment_status ENUM('completed', 'failed', 'refunded') DEFAULT 'failed',
     payment_gateway VARCHAR(50),
     gateway_response JSON,
     processed_at TIMESTAMP NULL,
