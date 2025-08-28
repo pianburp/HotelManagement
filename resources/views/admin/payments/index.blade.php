@@ -165,13 +165,13 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                @if($payment->status === 'completed') bg-green-100 text-green-800
-                                                @elseif($payment->status === 'pending') bg-yellow-100 text-yellow-800
-                                                @elseif($payment->status === 'failed') bg-red-100 text-red-800
-                                                @elseif($payment->status === 'refunded') bg-purple-100 text-purple-800
+                                                @if($payment->payment_status === 'completed') bg-green-100 text-green-800
+                                                @elseif($payment->payment_status === 'pending') bg-yellow-100 text-yellow-800
+                                                @elseif($payment->payment_status === 'failed') bg-red-100 text-red-800
+                                                @elseif($payment->payment_status === 'refunded') bg-purple-100 text-purple-800
                                                 @else bg-gray-100 text-gray-800
                                                 @endif">
-                                                {{ ucfirst($payment->status) }}
+                                                {{ ucfirst($payment->payment_status) }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
@@ -184,7 +184,7 @@
                                                     {{ __('Details') }}
                                                 </x-secondary-button>
                                                 
-                                                @if($payment->status === 'completed')
+                                                @if($payment->payment_status === 'completed')
                                                     <x-secondary-button onclick="downloadReceipt('{{ $payment->id }}')" class="text-xs py-1 px-2">
                                                         {{ __('Receipt') }}
                                                     </x-secondary-button>
@@ -194,7 +194,7 @@
                                                     </x-danger-button>
                                                 @endif
 
-                                                @if($payment->status === 'pending')
+                                                @if($payment->payment_status === 'pending')
                                                     <x-primary-button onclick="markAsCompleted('{{ $payment->id }}')" class="text-xs py-1 px-2">
                                                         {{ __('Mark Paid') }}
                                                     </x-primary-button>

@@ -47,10 +47,13 @@ class RoomTypeController extends Controller
             'base_price' => 'required|numeric|min:0',
             'max_occupancy' => 'required|integer|min:1',
             'amenities' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg|max:2048',
+            'amenities.*' => 'nullable|string|max:255',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            'translations' => 'required|array',
+            'translations.*' => 'required|array',
             'translations.*.name' => 'required|string|max:255',
             'translations.*.description' => 'required|string',
-            'translations.*.amenities_description' => 'nullable|string',
+            'translations.*.size' => 'nullable|string|max:100',
         ]);
 
         DB::beginTransaction();
@@ -59,7 +62,7 @@ class RoomTypeController extends Controller
                 'code' => $request->code,
                 'base_price' => $request->base_price,
                 'max_occupancy' => $request->max_occupancy,
-                'amenities' => $request->amenities ?? [],
+                'amenities' => array_filter($request->amenities ?? []), // Remove empty values
                 'is_active' => true,
             ]);
 
@@ -69,7 +72,7 @@ class RoomTypeController extends Controller
                     'locale' => $locale,
                     'name' => $translation['name'],
                     'description' => $translation['description'],
-                    'amenities_description' => $translation['amenities_description'] ?? null,
+                    'size' => $translation['size'] ?? null,
                 ]);
             }
 
@@ -77,7 +80,7 @@ class RoomTypeController extends Controller
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
                     $roomType->addMedia($image)
-                            ->toMediaCollection('room_types');
+                            ->toMediaCollection('images');
                 }
             }
 
@@ -128,12 +131,17 @@ class RoomTypeController extends Controller
             'code' => 'required|string|max:20|unique:room_types,code,' . $roomType->id,
             'base_price' => 'required|numeric|min:0',
             'max_occupancy' => 'required|integer|min:1',
+            'is_active' => 'required|boolean',
             'amenities' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg|max:2048',
+            'amenities.*' => 'nullable|string|max:255',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            'translations' => 'required|array',
+            'translations.*' => 'required|array',
             'translations.*.name' => 'required|string|max:255',
             'translations.*.description' => 'required|string',
-            'translations.*.amenities_description' => 'nullable|string',
+            'translations.*.size' => 'nullable|string|max:100',
             'remove_images' => 'nullable|array',
+            'remove_images.*' => 'integer|exists:media,id',
         ]);
 
         DB::beginTransaction();
@@ -142,7 +150,8 @@ class RoomTypeController extends Controller
                 'code' => $request->code,
                 'base_price' => $request->base_price,
                 'max_occupancy' => $request->max_occupancy,
-                'amenities' => $request->amenities ?? [],
+                'amenities' => array_filter($request->amenities ?? []), // Remove empty values
+                'is_active' => (bool)$request->is_active,
             ]);
 
             // Update translations
@@ -152,24 +161,29 @@ class RoomTypeController extends Controller
                     [
                         'name' => $translation['name'],
                         'description' => $translation['description'],
-                        'amenities_description' => $translation['amenities_description'] ?? null,
+                        'size' => $translation['size'] ?? null,
                     ]
                 );
             }
 
             // Remove selected images
-            if ($request->has('remove_images')) {
-                Media::whereIn('id', $request->remove_images)
+            if ($request->has('remove_images') && is_array($request->remove_images)) {
+                $mediaToRemove = Media::whereIn('id', $request->remove_images)
                      ->where('model_type', RoomType::class)
                      ->where('model_id', $roomType->id)
-                     ->delete();
+                     ->where('collection_name', 'images')
+                     ->get();
+                
+                foreach ($mediaToRemove as $media) {
+                    $media->delete();
+                }
             }
 
             // Add new images
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
                     $roomType->addMedia($image)
-                            ->toMediaCollection('room_types');
+                            ->toMediaCollection('images');
                 }
             }
 

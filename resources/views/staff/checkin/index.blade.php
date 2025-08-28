@@ -6,6 +6,13 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                @if(session('success'))
+                    <script>
+                        window.addEventListener('load', function() {
+                            alert(@json(session('success')));
+                        });
+                    </script>
+                @endif
                 <h3 class="text-lg font-medium mb-4">{{ __('Pending Check-ins') }}</h3>
                 <div class="space-y-4">
                     @forelse($checkIns ?? [] as $booking)

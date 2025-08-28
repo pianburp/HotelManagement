@@ -53,8 +53,19 @@ class Room extends Model
     {
         return $this->hasOne(Booking::class)
             ->whereIn('status', ['confirmed', 'checked_in'])
-            ->where('check_in_date', '<=', now())
-            ->where('check_out_date', '>=', now());
+            ->whereDate('check_in_date', '<=', today())
+            ->whereDate('check_out_date', '>=', today());
+    }
+
+    /**
+     * Get the next upcoming booking for this room (future confirmed booking with earliest check-in).
+     */
+    public function upcomingBooking(): HasOne
+    {
+        return $this->hasOne(Booking::class)
+            ->where('status', 'confirmed')
+            ->whereDate('check_in_date', '>', today())
+            ->oldestOfMany('check_in_date');
     }
 
     /**

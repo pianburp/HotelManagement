@@ -156,9 +156,9 @@
                                                     'failed' => 'text-red-600',
                                                     'refunded' => 'text-orange-600',
                                                 ];
-                                                $paymentStatusColor = $paymentStatusColors[$payment->status] ?? 'text-gray-600';
+                                                $paymentStatusColor = $paymentStatusColors[$payment->payment_status] ?? 'text-gray-600';
                                             @endphp
-                                            <span class="ml-2 {{ $paymentStatusColor }} font-medium">{{ __(ucfirst($payment->status)) }}</span>
+                                            <span class="ml-2 {{ $paymentStatusColor }} font-medium">{{ __(ucfirst($payment->payment_status)) }}</span>
                                         </div>
                                         <div>
                                             <span class="text-gray-600 font-medium">{{ __('Date') }}:</span>

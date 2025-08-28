@@ -25,7 +25,7 @@ class PaymentController extends Controller
 
         // Apply filters
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('payment_status', $request->status);
         }
 
         if ($request->filled('payment_method')) {
@@ -44,10 +44,10 @@ class PaymentController extends Controller
 
         // Get statistics
         $stats = [
-            'total_revenue' => Payment::where('status', 'completed')->sum('amount'),
-            'completed' => Payment::where('status', 'completed')->count(),
-            'pending' => Payment::where('status', 'pending')->count(),
-            'failed' => Payment::where('status', 'failed')->count(),
+            'total_revenue' => Payment::where('payment_status', 'completed')->sum('amount'),
+            'completed' => Payment::where('payment_status', 'completed')->count(),
+            'pending' => Payment::where('payment_status', 'pending')->count(),
+            'failed' => Payment::where('payment_status', 'failed')->count(),
         ];
 
         return view('admin.payments.index', compact('payments', 'stats'));
@@ -113,7 +113,7 @@ class PaymentController extends Controller
             'gateway_transaction_id' => $payment->gateway_transaction_id,
             'amount' => number_format($payment->amount, 2),
             'payment_method' => ucfirst(str_replace('_', ' ', $payment->payment_method)),
-            'status' => ucfirst($payment->status),
+            'status' => ucfirst($payment->payment_status),
             'processed_at' => $payment->processed_at ? $payment->processed_at->format('M d, Y H:i') : null,
             'notes' => $payment->notes,
         ]);
@@ -124,14 +124,14 @@ class PaymentController extends Controller
      */
     public function complete(Payment $payment)
     {
-        if ($payment->status !== 'pending') {
+    if ($payment->payment_status !== 'pending') {
             return back()->with('error', 'Only pending payments can be marked as completed.');
         }
 
         DB::beginTransaction();
         try {
             $payment->update([
-                'status' => 'completed',
+                'payment_status' => 'completed',
                 'processed_at' => now(),
             ]);
 
@@ -154,7 +154,7 @@ class PaymentController extends Controller
      */
     public function refund(Request $request, Payment $payment)
     {
-        if ($payment->status !== 'completed') {
+    if ($payment->payment_status !== 'completed') {
             return back()->with('error', 'Only completed payments can be refunded.');
         }
 
@@ -175,14 +175,14 @@ class PaymentController extends Controller
                 'amount' => -$refundAmount, // Negative amount for refund
                 'currency' => $payment->currency,
                 'payment_method' => $payment->payment_method,
-                'status' => 'completed',
+                'payment_status' => 'completed',
                 'processed_at' => now(),
                 'notes' => 'Refund: ' . $request->reason . ($request->notes ? ' - ' . $request->notes : ''),
             ]);
 
             // Update original payment status if full refund
             if ($refundAmount >= $payment->amount) {
-                $payment->update(['status' => 'refunded']);
+                $payment->update(['payment_status' => 'refunded']);
             }
 
             DB::commit();
@@ -199,7 +199,7 @@ class PaymentController extends Controller
      */
     public function receipt(Payment $payment)
     {
-        if ($payment->status !== 'completed') {
+    if ($payment->payment_status !== 'completed') {
             return back()->with('error', 'Receipt can only be generated for completed payments.');
         }
 

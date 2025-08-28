@@ -21,7 +21,7 @@ class RoomController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Room::with(['roomType.translations', 'currentBooking.user']);
+    $query = Room::with(['roomType.translations', 'currentBooking.user', 'upcomingBooking']);
 
         // Apply filters
         if ($request->filled('room_type')) {

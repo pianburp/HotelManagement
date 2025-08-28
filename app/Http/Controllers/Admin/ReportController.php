@@ -27,7 +27,7 @@ class ReportController extends Controller
         $stats = [
             'total_rooms' => Room::count(),
             'current_occupancy' => $this->getCurrentOccupancyRate(),
-            'monthly_revenue' => Payment::where('status', 'completed')
+            'monthly_revenue' => Payment::where('payment_status', 'completed')
                                       ->whereMonth('created_at', now()->month)
                                       ->whereYear('created_at', now()->year)
                                       ->sum('amount'),
@@ -124,9 +124,9 @@ class ReportController extends Controller
         $totalRooms = Room::count();
         if ($totalRooms == 0) return 0;
 
-        $avgOccupied = Booking::where('status', 'checked_in')
-                             ->where('check_in', '>=', now()->subDays(30))
-                             ->count() / 30;
+    $avgOccupied = Booking::where('status', 'checked_in')
+                 ->whereDate('check_in_date', '>=', now()->subDays(30))
+                 ->count() / 30;
         
         return round(($avgOccupied / $totalRooms) * 100, 1);
     }
@@ -148,7 +148,7 @@ class ReportController extends Controller
                 $revenue = Payment::whereHas('booking.room', function ($query) use ($roomType) {
                     $query->where('room_type_id', $roomType->id);
                 })
-                ->where('status', 'completed')
+                ->where('payment_status', 'completed')
                 ->whereMonth('created_at', now()->month)
                 ->sum('amount');
 
@@ -185,7 +185,7 @@ class ReportController extends Controller
 
         // Recent payments
         $recentPayments = Payment::with(['booking'])
-            ->where('status', 'completed')
+            ->where('payment_status', 'completed')
             ->orderBy('created_at', 'desc')
             ->limit(3)
             ->get()
@@ -216,8 +216,8 @@ class ReportController extends Controller
 
             $totalRooms = Room::count();
             $occupiedRooms = Booking::where('status', 'checked_in')
-                ->whereDate('check_in', '<=', $date)
-                ->whereDate('check_out', '>', $date)
+                ->whereDate('check_in_date', '<=', $date)
+                ->whereDate('check_out_date', '>', $date)
                 ->count();
 
             $rate = $totalRooms > 0 ? round(($occupiedRooms / $totalRooms) * 100, 1) : 0;
@@ -242,7 +242,7 @@ class ReportController extends Controller
             $date = now()->subMonths($i);
             $months->push($date->format('M Y'));
 
-            $revenue = Payment::where('status', 'completed')
+            $revenue = Payment::where('payment_status', 'completed')
                 ->whereYear('created_at', $date->year)
                 ->whereMonth('created_at', $date->month)
                 ->sum('amount');
@@ -269,7 +269,7 @@ class ReportController extends Controller
             ->leftJoin('bookings', 'rooms.id', '=', 'bookings.room_id')
             ->leftJoin('payments', 'bookings.id', '=', 'payments.booking_id')
             ->whereMonth('bookings.created_at', now()->month)
-            ->where('payments.status', 'completed')
+            ->where('payments.payment_status', 'completed')
             ->groupBy('rooms.id')
             ->orderByDesc('revenue')
             ->limit(10)
@@ -331,7 +331,7 @@ class ReportController extends Controller
      */
     private function getPaymentMethodBreakdown($startDate, $endDate)
     {
-        return Payment::where('status', 'completed')
+    return Payment::where('payment_status', 'completed')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy('payment_method')
             ->selectRaw('payment_method, COUNT(*) as count, SUM(amount) as total')

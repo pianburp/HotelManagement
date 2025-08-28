@@ -58,10 +58,26 @@
                                 <!-- Images -->
                                 <div>
                                     <x-input-label for="images" :value="__('Room Images')" />
-                                    <input id="images" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" 
-                                           type="file" name="images[]" accept="image/*" multiple />
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors duration-300" 
+                                         id="image-dropzone">
+                                        <div class="space-y-1 text-center">
+                                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label for="images" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                                    <span>{{ __('Upload files') }}</span>
+                                                    <input id="images" name="images[]" type="file" class="sr-only" accept="image/*" multiple>
+                                                </label>
+                                                <p class="pl-1">{{ __('or drag and drop') }}</p>
+                                            </div>
+                                            <p class="text-xs text-gray-500">{{ __('PNG, JPG, GIF up to 5MB each') }}</p>
+                                        </div>
+                                    </div>
                                     <x-input-error :messages="$errors->get('images')" class="mt-2" />
-                                    <p class="mt-1 text-sm text-gray-600">{{ __('Select multiple images for this room type') }}</p>
+                                    
+                                    <!-- Image Preview Container -->
+                                    <div id="image-preview" class="mt-4 grid grid-cols-2 gap-4 hidden"></div>
                                 </div>
                             </div>
 
@@ -164,7 +180,11 @@
         document.addEventListener('DOMContentLoaded', function() {
             const amenitiesContainer = document.getElementById('amenities-container');
             const addAmenityBtn = document.getElementById('add-amenity');
+            const imageInput = document.getElementById('images');
+            const imageDropzone = document.getElementById('image-dropzone');
+            const imagePreview = document.getElementById('image-preview');
 
+            // Amenities management
             addAmenityBtn.addEventListener('click', function() {
                 const newAmenityDiv = document.createElement('div');
                 newAmenityDiv.className = 'flex items-center space-x-2 amenity-item';
@@ -188,6 +208,75 @@
                     }
                 }
             });
+
+            // Image drag and drop functionality
+            let dragCounter = 0;
+
+            imageDropzone.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                dragCounter++;
+                this.classList.add('border-indigo-500', 'bg-indigo-50');
+            });
+
+            imageDropzone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    this.classList.remove('border-indigo-500', 'bg-indigo-50');
+                }
+            });
+
+            imageDropzone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+
+            imageDropzone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dragCounter = 0;
+                this.classList.remove('border-indigo-500', 'bg-indigo-50');
+                
+                const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+                handleImageFiles(files);
+            });
+
+            imageInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                handleImageFiles(files);
+            });
+
+            function handleImageFiles(files) {
+                if (files.length === 0) {
+                    imagePreview.classList.add('hidden');
+                    return;
+                }
+
+                imagePreview.classList.remove('hidden');
+                imagePreview.innerHTML = '';
+
+                files.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const previewDiv = document.createElement('div');
+                        previewDiv.className = 'relative';
+                        previewDiv.innerHTML = `
+                            <img src="${e.target.result}" alt="Preview" class="w-full h-24 object-cover rounded-lg">
+                            <div class="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                ${file.name}
+                            </div>
+                            <div class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                ${(file.size / 1024 / 1024).toFixed(1)}MB
+                            </div>
+                        `;
+                        imagePreview.appendChild(previewDiv);
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                // Update the file input with the new files
+                const dataTransfer = new DataTransfer();
+                files.forEach(file => dataTransfer.items.add(file));
+                imageInput.files = dataTransfer.files;
+            }
         });
     </script>
 </x-app-layout>

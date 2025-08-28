@@ -35,4 +35,20 @@ class Payment extends Model
     {
         return $this->belongsTo(Booking::class);
     }
+
+    /**
+     * Backward-compat accessor for `status` to map to `payment_status`.
+     */
+    public function getStatusAttribute()
+    {
+        return $this->payment_status;
+    }
+
+    /**
+     * Backward-compat mutator for `status` to map to `payment_status`.
+     */
+    public function setStatusAttribute($value): void
+    {
+        $this->attributes['payment_status'] = $value;
+    }
 }

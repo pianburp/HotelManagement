@@ -53,7 +53,7 @@ class RoomType extends Model implements HasMedia
     /**
      * Get translation for specific locale.
      */
-    public function getTranslation(string $locale = null): ?RoomTypeTranslation
+    public function getTranslation(?string $locale = null): ?RoomTypeTranslation
     {
         $locale = $locale ?? app()->getLocale();
         return $this->translations()->where('locale', $locale)->first();
@@ -78,6 +78,15 @@ class RoomType extends Model implements HasMedia
     }
 
     /**
+     * Get the size attribute (translated).
+     */
+    public function getSizeAttribute(): ?string
+    {
+        $translation = $this->getTranslation();
+        return $translation ? $translation->size : null;
+    }
+
+    /**
      * Set translation for a specific locale.
      */
     public function setTranslation(string $attribute, string $locale, string $value): self
@@ -99,6 +108,24 @@ class RoomType extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('images')
-            ->useDisk('public');
+            ->useDisk('public')
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/jpg', 'image/gif']);
+    }
+
+    public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
+    {
+        $this->addMediaConversion('thumb')
+            ->width(300)
+            ->height(200)
+            ->sharpen(10)
+            ->optimize()
+            ->nonQueued();
+
+        $this->addMediaConversion('medium')
+            ->width(600)
+            ->height(400)
+            ->sharpen(10)
+            ->optimize()
+            ->nonQueued();
     }
 }

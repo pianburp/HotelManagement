@@ -14,6 +14,7 @@ class RoomTypeTranslation extends Model
         'locale',
         'name',
         'description',
+        'size',
         'amenities_description',
     ];
 

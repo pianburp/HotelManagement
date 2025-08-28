@@ -15,9 +15,11 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     @if(session('success'))
-                        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-                            {{ session('success') }}
-                        </div>
+                        <script>
+                            window.addEventListener('load', function() {
+                                alert(@json(session('success')));
+                            });
+                        </script>
                     @endif
 
                     <div class="overflow-x-auto">
