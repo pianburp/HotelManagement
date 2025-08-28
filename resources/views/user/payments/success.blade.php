@@ -25,17 +25,20 @@
                         <h4 class="text-lg font-semibold mb-4">{{ __('Booking Confirmation') }}</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <p class="text-sm text-gray-600"><strong>{{ __('Confirmation Number') }}:</strong> HMS-{{ str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT) }}</p>
+                                <p class="text-sm text-gray-600"><strong>{{ __('Confirmation Number') }}:</strong> {{ session('booking.confirmation_number', 'HMS-' . str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT)) }}</p>
                                 <p class="text-sm text-gray-600"><strong>{{ __('Room Type') }}:</strong> {{ session('booking.room_type', 'Deluxe Suite') }}</p>
-                                <p class="text-sm text-gray-600"><strong>{{ __('Check-in Date') }}:</strong> {{ session('booking.check_in', date('M d, Y')) }}</p>
-                                <p class="text-sm text-gray-600"><strong>{{ __('Check-out Date') }}:</strong> {{ session('booking.check_out', date('M d, Y', strtotime('+3 days'))) }}</p>
+                                <p class="text-sm text-gray-600"><strong>{{ __('Check-in Date') }}:</strong> {{ date('M d, Y', strtotime(session('booking.check_in', date('Y-m-d')))) }}</p>
+                                <p class="text-sm text-gray-600"><strong>{{ __('Check-out Date') }}:</strong> {{ date('M d, Y', strtotime(session('booking.check_out', date('Y-m-d', strtotime('+3 days'))))) }}</p>
                                 <p class="text-sm text-gray-600"><strong>{{ __('Number of Guests') }}:</strong> {{ session('booking.guests', '2') }}</p>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-600"><strong>{{ __('Payment Method') }}:</strong> {{ session('booking.payment_method', 'Credit Card') }}</p>
-                                <p class="text-sm text-gray-600"><strong>{{ __('Transaction ID') }}:</strong> TXN-{{ str_pad(rand(1000000000, 9999999999), 10, '0', STR_PAD_LEFT) }}</p>
+                                <p class="text-sm text-gray-600"><strong>{{ __('Payment Method') }}:</strong> {{ ucfirst(str_replace('_', ' ', session('booking.payment_method', 'Credit Card'))) }}</p>
+                                <p class="text-sm text-gray-600"><strong>{{ __('Transaction ID') }}:</strong> {{ session('booking.transaction_id', 'TXN-' . str_pad(rand(1000000000, 9999999999), 10, '0', STR_PAD_LEFT)) }}</p>
                                 <p class="text-sm text-gray-600"><strong>{{ __('Payment Date') }}:</strong> {{ date('M d, Y H:i') }}</p>
                                 <p class="text-lg font-bold text-green-600"><strong>{{ __('Total Paid') }}:</strong> {{ session('booking.total', 'RM 660.00') }}</p>
+                                @if(session('booking.booking_id'))
+                                    <p class="text-xs text-green-600 mt-1">{{ __('✓ Booking record created in database') }}</p>
+                                @endif
                             </div>
                         </div>
                     </div>

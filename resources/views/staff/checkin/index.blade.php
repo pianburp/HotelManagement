@@ -8,7 +8,7 @@
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <h3 class="text-lg font-medium mb-4">{{ __('Pending Check-ins') }}</h3>
                 <div class="space-y-4">
-                    @forelse($bookings ?? [] as $booking)
+                    @forelse($checkIns ?? [] as $booking)
                         <div class="border p-4 rounded-md flex items-center justify-between">
                             <div>
                                 <div class="font-medium">{{ $booking->guest_name ?? $booking->user->name }}</div>

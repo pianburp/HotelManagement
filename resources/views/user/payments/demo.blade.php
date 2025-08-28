@@ -165,15 +165,40 @@
             function processPayment(status) {
                 showProcessing();
                 
-                // Simulate payment processing delay
+                // Create a form to submit the payment status
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ route("user.payments.process") }}';
+                
+                // Add CSRF token
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = '{{ csrf_token() }}';
+                form.appendChild(csrfInput);
+                
+                // Add status input
+                const statusInput = document.createElement('input');
+                statusInput.type = 'hidden';
+                statusInput.name = 'status';
+                statusInput.value = status;
+                form.appendChild(statusInput);
+                
+                // Add payment form data
+                const formData = new FormData(document.getElementById('payment-form'));
+                for (let [key, value] of formData.entries()) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+                
+                document.body.appendChild(form);
+                
+                // Simulate processing delay
                 setTimeout(() => {
-                    hideProcessing();
-                    
-                    if (status === 'success') {
-                        window.location.href = '{{ route("user.payments.success") }}';
-                    } else if (status === 'failed') {
-                        window.location.href = '{{ route("user.payments.failed") }}';
-                    }
+                    form.submit();
                 }, 2000);
             }
             

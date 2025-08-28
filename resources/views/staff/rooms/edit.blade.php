@@ -6,9 +6,11 @@
     <div class="py-6">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
-                <form method="POST" action="{{ route('staff.rooms.update', $room) }}">
+                <form method="POST" action="{{ route('staff.rooms.status', $room) }}">
                     @csrf
                     @method('PATCH')
+
+                    <input type="hidden" name="room_id" value="{{ $room->id }}" />
 
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">{{ __('Room Number') }}</label>
@@ -23,6 +25,11 @@
                             <option value="onboard" {{ $room->status=='onboard' ? 'selected' : '' }}>{{ __('Onboard') }}</option>
                             <option value="closed" {{ $room->status=='closed' ? 'selected' : '' }}>{{ __('Closed') }}</option>
                         </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">{{ __('Reason for status change') }}</label>
+                        <input type="text" name="reason" value="{{ old('reason') }}" class="mt-1 block w-full" placeholder="Optional" />
                     </div>
 
                     <div class="flex justify-end">

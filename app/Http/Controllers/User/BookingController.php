@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BookingRequest;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomType;
@@ -73,40 +74,33 @@ class BookingController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(BookingRequest $request)
     {
-        $request->validate([
-            'room_id' => 'required|exists:rooms,id',
-            'check_in' => 'required|date|after:today',
-            'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1',
-            'guest_name' => 'required|string|max:255',
-            'guest_email' => 'required|email|max:255',
-            'guest_phone' => 'required|string|max:20',
-            'special_requests' => 'nullable|string|max:1000',
-        ]);
-
         $room = Room::with('roomType')->findOrFail($request->room_id);
         
         // Calculate total amount
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
         $nights = $checkIn->diffInDays($checkOut);
-        $totalAmount = $room->roomType->base_price * $nights;
+        $subtotal = $room->roomType->base_price * $nights;
+        $taxes = $subtotal * 0.10; // 10% tax rate
+        $totalAmount = $subtotal + $taxes;
 
         $booking = Booking::create([
             'user_id' => auth()->id(),
             'room_id' => $request->room_id,
-            'check_in' => $request->check_in,
-            'check_out' => $request->check_out,
-            'number_of_guests' => $request->guests,
-            'guest_name' => $request->guest_name,
-            'guest_email' => $request->guest_email,
-            'guest_phone' => $request->guest_phone,
+            'check_in_date' => $request->check_in,
+            'check_out_date' => $request->check_out,
+            'guests_count' => $request->guests,
             'special_requests' => $request->special_requests,
             'total_amount' => $totalAmount,
             'status' => 'confirmed',
+            'booking_reference' => $this->generateBookingReference(),
+            'booking_source' => 'website',
         ]);
+
+        // Update room status to reserved
+        $room->update(['status' => 'reserved']);
 
         return redirect()->route('user.bookings.show', $booking)
             ->with('success', 'Booking created successfully!');
@@ -240,11 +234,11 @@ class BookingController extends Controller
             
             $query->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
                 $q->where(function ($q) use ($checkIn, $checkOut) {
-                    $q->whereBetween('check_in', [$checkIn, $checkOut])
-                      ->orWhereBetween('check_out', [$checkIn, $checkOut])
+                    $q->whereBetween('check_in_date', [$checkIn, $checkOut])
+                      ->orWhereBetween('check_out_date', [$checkIn, $checkOut])
                       ->orWhere(function ($q) use ($checkIn, $checkOut) {
-                          $q->where('check_in', '<=', $checkIn)
-                            ->where('check_out', '>=', $checkOut);
+                          $q->where('check_in_date', '<=', $checkIn)
+                            ->where('check_out_date', '>=', $checkOut);
                       });
                 })->whereIn('status', ['confirmed', 'checked_in']);
             });
@@ -271,5 +265,17 @@ class BookingController extends Controller
     public function destroy(Booking $booking)
     {
         //
+    }
+
+    /**
+     * Generate a unique booking reference.
+     */
+    private function generateBookingReference(): string
+    {
+        do {
+            $reference = 'BK' . date('Y') . str_pad(mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
+        } while (Booking::where('booking_reference', $reference)->exists());
+
+        return $reference;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\RoomStatusHistory;
+use App\Models\Room;
 use Illuminate\Http\Request;
 
 class RoomStatusController extends Controller
@@ -53,7 +54,30 @@ class RoomStatusController extends Controller
      */
     public function update(Request $request, RoomStatusHistory $roomStatusHistory)
     {
-        //
+        $request->validate([
+            'status' => 'required|in:available,reserved,onboard,closed',
+            'room_id' => 'required|exists:rooms,id',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $room = Room::findOrFail($request->room_id);
+        $oldStatus = $room->status;
+        $newStatus = $request->status;
+
+        if ($oldStatus !== $newStatus) {
+            $room->status = $newStatus;
+            $room->save();
+
+            RoomStatusHistory::create([
+                'room_id' => $room->id,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'changed_by' => auth()->id(),
+                'reason' => $request->reason,
+            ]);
+        }
+
+        return redirect()->back()->with('success', __('Room status updated successfully.'));
     }
 
     /**

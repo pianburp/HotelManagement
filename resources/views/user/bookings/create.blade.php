@@ -148,6 +148,13 @@
             
             const basePrice = {{ $room->roomType->base_price }};
             const taxRate = 0.10; // 10% tax rate
+            const roomId = {{ $room->id }};
+            
+            // Create availability error container
+            const availabilityError = document.createElement('div');
+            availabilityError.id = 'availability-error';
+            availabilityError.className = 'text-red-600 text-sm mt-1 hidden';
+            checkOutInput.parentNode.appendChild(availabilityError);
             
             function calculateTotal() {
                 const checkIn = new Date(checkInInput.value);
@@ -160,19 +167,12 @@
                     if (subtotalSpan) subtotalSpan.textContent = formatMoney(0);
                     if (taxesSpan) taxesSpan.textContent = formatMoney(0);
                     if (totalSpan) totalSpan.textContent = formatMoney(0);
-                    if (submitButton) {
-                        submitButton.disabled = true;
-                        submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-                    }
+                    disableSubmitButton('Invalid date range');
                     return;
                 }
                 
                 // Clear error state
                 if (checkoutError) checkoutError.classList.add('hidden');
-                if (submitButton) {
-                    submitButton.disabled = false;
-                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
                 
                 if (checkIn && checkOut && checkOut > checkIn) {
                     const timeDiff = checkOut.getTime() - checkIn.getTime();
@@ -185,6 +185,9 @@
                     if (subtotalSpan) subtotalSpan.textContent = formatMoney(subtotal);
                     if (taxesSpan) taxesSpan.textContent = formatMoney(taxes);
                     if (totalSpan) totalSpan.textContent = formatMoney(total);
+                    
+                    // Check availability with server
+                    checkAvailability(checkInInput.value, checkOutInput.value);
                 } else {
                     if (nightsSpan) nightsSpan.textContent = '0';
                     if (subtotalSpan) subtotalSpan.textContent = formatMoney(0);
@@ -211,6 +214,63 @@
                 return 'RM' + amount.toFixed(2);
             }
             
+            function disableSubmitButton(reason) {
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    submitButton.title = reason;
+                }
+            }
+            
+            function enableSubmitButton() {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    submitButton.title = '';
+                }
+            }
+            
+            async function checkAvailability(checkIn, checkOut) {
+                try {
+                    const response = await fetch(`/api/rooms/${roomId}/check-availability`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            check_in: checkIn,
+                            check_out: checkOut
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.available) {
+                        availabilityError.classList.add('hidden');
+                        enableSubmitButton();
+                    } else {
+                        let errorMessage = 'Selected dates are not available.';
+                        if (data.conflicts && data.conflicts.length > 0) {
+                            const conflictDates = data.conflicts.map(conflict => 
+                                `${conflict.check_in} - ${conflict.check_out}`
+                            ).join(', ');
+                            errorMessage += ` Conflicting bookings: ${conflictDates}`;
+                        }
+                        
+                        availabilityError.textContent = errorMessage;
+                        availabilityError.classList.remove('hidden');
+                        disableSubmitButton('Dates not available');
+                    }
+                } catch (error) {
+                    console.error('Error checking availability:', error);
+                    // On error, allow submission but show warning
+                    availabilityError.textContent = 'Unable to verify availability. Please check dates.';
+                    availabilityError.classList.remove('hidden');
+                    enableSubmitButton();
+                }
+            }
+            
             // Event listeners
             checkInInput.addEventListener('change', function() {
                 updateCheckoutMinDate();
@@ -219,7 +279,7 @@
             
             checkOutInput.addEventListener('change', calculateTotal);
 
-            // Prevent form submission with invalid dates
+            // Prevent form submission with invalid dates or unavailable rooms
             if (form) {
                 form.addEventListener('submit', function(e) {
                     const checkIn = new Date(checkInInput.value);
@@ -229,6 +289,13 @@
                         e.preventDefault();
                         if (checkoutError) checkoutError.classList.remove('hidden');
                         checkOutInput.focus();
+                        return;
+                    }
+                    
+                    if (submitButton.disabled) {
+                        e.preventDefault();
+                        alert('Please select valid available dates before proceeding.');
+                        return;
                     }
                 });
             }

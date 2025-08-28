@@ -73,13 +73,13 @@ class Room extends Model
             ->where(function ($query) use ($checkIn, $checkOut) {
                 $query->where(function ($q) use ($checkIn, $checkOut) {
                     // Booking starts during our stay
-                    $q->whereBetween('check_in', [$checkIn, $checkOut])
+                    $q->whereBetween('check_in_date', [$checkIn, $checkOut])
                       // Booking ends during our stay
-                      ->orWhereBetween('check_out', [$checkIn, $checkOut])
+                      ->orWhereBetween('check_out_date', [$checkIn, $checkOut])
                       // Booking encompasses our entire stay
                       ->orWhere(function ($q) use ($checkIn, $checkOut) {
-                          $q->where('check_in', '<=', $checkIn)
-                            ->where('check_out', '>=', $checkOut);
+                          $q->where('check_in_date', '<=', $checkIn)
+                            ->where('check_out_date', '>=', $checkOut);
                       });
                 });
             })
