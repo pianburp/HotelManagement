@@ -6,6 +6,15 @@
     <div class="py-6">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
+                @if(session('success'))
+                        <script>
+                            window.onload = function() {
+                                alert(@json(session('success')));
+                                window.location.href = "{{ route('staff.rooms.index') }}";
+                            };
+                        </script>
+                @endif
+
                 <form method="POST" action="{{ route('staff.rooms.status', $room) }}">
                     @csrf
                     @method('PATCH')
@@ -19,12 +28,10 @@
 
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">{{ __('Status') }}</label>
-                        <select name="status" class="mt-1 block w-full">
-                            <option value="available" {{ $room->status=='available' ? 'selected' : '' }}>{{ __('Available') }}</option>
-                            <option value="reserved" {{ $room->status=='reserved' ? 'selected' : '' }}>{{ __('Reserved') }}</option>
-                            <option value="onboard" {{ $room->status=='onboard' ? 'selected' : '' }}>{{ __('Onboard') }}</option>
-                            <option value="closed" {{ $room->status=='closed' ? 'selected' : '' }}>{{ __('Closed') }}</option>
-                        </select>
+                            <select name="status" class="mt-1 block w-full">
+                                <option value="available" {{ $room->status=='available' ? 'selected' : '' }}>{{ __('Available') }}</option>
+                                <option value="closed" {{ $room->status=='closed' ? 'selected' : '' }}>{{ __('Closed') }}</option>
+                            </select>
                     </div>
 
                     <div class="mb-4">

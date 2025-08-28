@@ -16,13 +16,15 @@
                             <div>
                                 <x-input-label for="check_in" :value="__('Check In')" />
                                 <x-text-input id="check_in" type="date" name="check_in" 
-                                    :value="request('check_in')" required class="mt-1 block w-full" />
+                                    :value="request('check_in', date('Y-m-d'))" required class="mt-1 block w-full" 
+                                    min="{{ date('Y-m-d') }}" />
                                 <x-input-error :messages="$errors->get('check_in')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="check_out" :value="__('Check Out')" />
                                 <x-text-input id="check_out" type="date" name="check_out" 
-                                    :value="request('check_out')" required class="mt-1 block w-full" />
+                                    :value="request('check_out', date('Y-m-d', strtotime('+1 day')))" required class="mt-1 block w-full" 
+                                    min="{{ date('Y-m-d', strtotime('+1 day')) }}" />
                                 <x-input-error :messages="$errors->get('check_out')" class="mt-2" />
                             </div>
                             <!-- Occupancy -->
@@ -73,7 +75,7 @@
                                         <input type="checkbox" name="amenities[]" value="{{ $amenity }}"
                                             {{ in_array($amenity, request('amenities', [])) ? 'checked' : '' }}
                                             class="rounded border-gray-300 text-indigo-600 shadow-sm">
-                                        <span class="ml-2">{{ __($amenity) }}</span>
+                                        <span class="ml-2">{{ __(ucfirst($amenity)) }}</span>
                                     </label>
                                 @endforeach
                             </div>
@@ -141,6 +143,23 @@
                             </div>
 
                             <p class="text-gray-600 mb-4 line-clamp-2">{{ Str::limit($room->roomType->description, 100) }}</p>
+                            
+                            <!-- Amenities -->
+                            @if($room->roomType->amenities && count($room->roomType->amenities) > 0)
+                                <div class="mb-4">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">{{ __('Amenities') }}:</h4>
+                                    <div class="flex flex-wrap gap-1">
+                                        @foreach(array_slice($room->roomType->amenities, 0, 4) as $amenity)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                                                {{ __(ucfirst($amenity)) }}
+                                            </span>
+                                        @endforeach
+                                        @if(count($room->roomType->amenities) > 4)
+                                            <span class="text-xs text-gray-500">+{{ count($room->roomType->amenities) - 4 }} {{ __('more') }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
                             <div class="flex justify-between items-center mb-4">
                                 <span class="text-lg font-bold text-gray-900">
                                     {{ money($room->roomType->base_price) }} / {{ __('night') }}
@@ -185,4 +204,25 @@
             @endif
         </div>
     </div>
+
+    <script>
+        // Date validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkInInput = document.getElementById('check_in');
+            const checkOutInput = document.getElementById('check_out');
+            
+            checkInInput.addEventListener('change', function() {
+                const checkInDate = new Date(this.value);
+                const minCheckOut = new Date(checkInDate);
+                minCheckOut.setDate(minCheckOut.getDate() + 1);
+                
+                checkOutInput.min = minCheckOut.toISOString().split('T')[0];
+                
+                // If check-out is before or same as check-in, update it
+                if (checkOutInput.value && new Date(checkOutInput.value) <= checkInDate) {
+                    checkOutInput.value = minCheckOut.toISOString().split('T')[0];
+                }
+            });
+        });
+    </script>
 </x-app-layout>

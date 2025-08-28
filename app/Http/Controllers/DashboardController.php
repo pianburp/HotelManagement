@@ -71,7 +71,7 @@ class DashboardController extends Controller
                 ->where('status', 'confirmed')
                 ->sum('guests_count'),
             'todays_checkouts' => Booking::whereDate('check_out_date', Carbon::today())
-                ->where('status', 'confirmed')
+                ->where('status', 'checked_in')
                 ->sum('guests_count'),
             'active_waitlist' => Waitlist::where('status', 'active')->count(),
         ];
@@ -83,7 +83,7 @@ class DashboardController extends Controller
 
         $todaysCheckOuts = Booking::with(['user', 'room.roomType'])
             ->whereDate('check_out_date', Carbon::today())
-            ->where('status', 'confirmed')
+            ->where('status', 'checked_in')
             ->get();
 
         // The rooms table enum currently contains: available, reserved, onboard, closed

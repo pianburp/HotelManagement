@@ -12,6 +12,11 @@ class CheckInController extends Controller
 {
     /**
      * Display a listing of check-ins.
+     * 
+     * Note: Currently showing duplicate bookings due to data integrity issue
+     * where the same room has multiple confirmed bookings for the same date.
+     * This should be resolved by adding database constraints to prevent
+     * overlapping bookings for the same room.
      */
     public function index(Request $request)
     {
@@ -20,7 +25,11 @@ class CheckInController extends Controller
         $checkIns = Booking::with(['user', 'room.roomType'])
             ->where('check_in_date', $date)
             ->where('status', 'confirmed')
+            ->whereHas('room', function ($query) {
+                $query->where('status', 'reserved');
+            })
             ->orderBy('check_in_date')
+            ->orderBy('id') // Add consistent ordering to ensure deterministic results
             ->get();
 
         return view('staff.checkin.index', compact('checkIns', 'date'));
@@ -54,22 +63,25 @@ class CheckInController extends Controller
             'payment_confirmed' => 'required|boolean',
         ]);
 
-        // Update booking status
+        // Update booking status to checked_in
         $booking->update([
             'status' => 'checked_in',
             'special_requests' => $booking->special_requests . 
                 ($request->notes ? "\n\nCheck-in Notes: " . $request->notes : '')
         ]);
 
-        // Update room status
+        // Update room status to onboard
         $booking->room->update(['status' => 'onboard']);
 
-        // Create status history
-        $booking->room->statusHistory()->create([
-            'status' => 'onboard',
-            'reason' => 'Guest checked in - Booking #' . $booking->booking_reference,
-            'changed_by' => auth()->id(),
-        ]);
+        // Create room status history
+        if (method_exists($booking->room, 'statusHistory')) {
+            $booking->room->statusHistory()->create([
+                'new_status' => 'onboard',
+                'old_status' => $booking->room->getOriginal('status'),
+                'reason' => 'Guest checked in - Booking #' . $booking->booking_reference,
+                'changed_by' => auth()->id(),
+            ]);
+        }
 
         return redirect()->route('staff.checkin.index')
             ->with('success', 'Guest checked in successfully!');

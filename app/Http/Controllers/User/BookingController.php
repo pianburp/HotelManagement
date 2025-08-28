@@ -19,6 +19,7 @@ class BookingController extends Controller
     {
         $rooms = Room::with(['roomType.translations'])
             ->whereHas('roomType')
+            ->where('status', 'available') // Only show available rooms
             ->orderBy('room_type_id') // Order by room type to show variety
             ->orderBy('room_number') // Then by room number
             ->paginate(9);
@@ -191,6 +192,18 @@ class BookingController extends Controller
      */
     public function search(Request $request)
     {
+        // Validate the search inputs
+        $request->validate([
+            'check_in' => 'nullable|date|after_or_equal:today',
+            'check_out' => 'nullable|date|after:check_in',
+            'occupancy' => 'nullable|integer|min:1|max:6',
+            'price_min' => 'nullable|numeric|min:0',
+            'price_max' => 'nullable|numeric|min:0|gte:price_min',
+            'room_type' => 'nullable|exists:room_types,id',
+            'amenities' => 'nullable|array',
+            'amenities.*' => 'string|in:' . implode(',', config('hotel.amenities')),
+        ]);
+
         $query = Room::with(['roomType.translations', 'roomType.media'])
             ->whereHas('roomType');
 
@@ -218,10 +231,11 @@ class BookingController extends Controller
             });
         }
 
-        // Filter by amenities
+        // Filter by amenities (room must have ALL selected amenities)
         if ($request->filled('amenities')) {
-            $query->whereHas('roomType', function ($q) use ($request) {
-                foreach ($request->amenities as $amenity) {
+            $selectedAmenities = $request->amenities;
+            $query->whereHas('roomType', function ($q) use ($selectedAmenities) {
+                foreach ($selectedAmenities as $amenity) {
                     $q->whereJsonContains('amenities', $amenity);
                 }
             });
@@ -232,16 +246,32 @@ class BookingController extends Controller
             $checkIn = $request->check_in;
             $checkOut = $request->check_out;
             
-            $query->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
-                $q->where(function ($q) use ($checkIn, $checkOut) {
-                    $q->whereBetween('check_in_date', [$checkIn, $checkOut])
-                      ->orWhereBetween('check_out_date', [$checkIn, $checkOut])
-                      ->orWhere(function ($q) use ($checkIn, $checkOut) {
-                          $q->where('check_in_date', '<=', $checkIn)
-                            ->where('check_out_date', '>=', $checkOut);
-                      });
-                })->whereIn('status', ['confirmed', 'checked_in']);
-            });
+            // Only show rooms that are actually available and don't have conflicting bookings
+            $query->where('status', 'available')
+                ->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
+                    $q->where(function ($q) use ($checkIn, $checkOut) {
+                        // Check for any overlap in booking dates
+                        $q->where(function ($overlap) use ($checkIn, $checkOut) {
+                            // Case 1: Existing booking starts during our stay
+                            $overlap->whereBetween('check_in_date', [$checkIn, $checkOut])
+                                // Case 2: Existing booking ends during our stay  
+                                ->orWhereBetween('check_out_date', [$checkIn, $checkOut])
+                                // Case 3: Our stay is completely within existing booking
+                                ->orWhere(function ($within) use ($checkIn, $checkOut) {
+                                    $within->where('check_in_date', '<=', $checkIn)
+                                           ->where('check_out_date', '>=', $checkOut);
+                                })
+                                // Case 4: Existing booking is completely within our stay
+                                ->orWhere(function ($contains) use ($checkIn, $checkOut) {
+                                    $contains->where('check_in_date', '>=', $checkIn)
+                                            ->where('check_out_date', '<=', $checkOut);
+                                });
+                        });
+                    })->whereIn('status', ['confirmed', 'checked_in', 'pending']);
+                });
+        } else {
+            // If no dates specified, only show available rooms
+            $query->where('status', 'available');
         }
 
         $rooms = $query->paginate(9)->withQueryString();

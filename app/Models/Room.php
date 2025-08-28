@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Room extends Model
 {
@@ -43,6 +44,17 @@ class Room extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Get the current active booking for this room.
+     */
+    public function currentBooking(): HasOne
+    {
+        return $this->hasOne(Booking::class)
+            ->whereIn('status', ['confirmed', 'checked_in'])
+            ->where('check_in_date', '<=', now())
+            ->where('check_out_date', '>=', now());
     }
 
     /**
@@ -125,5 +137,21 @@ class Room extends Model
     public function isOutOfService(): bool
     {
         return $this->status === 'closed';
+    }
+
+    /**
+     * Accessor for backward compatibility with 'floor' attribute.
+     */
+    public function getFloorAttribute(): int
+    {
+        return $this->floor_number;
+    }
+
+    /**
+     * Accessor for backward compatibility with 'is_smoking' attribute.
+     */
+    public function getIsSmokingAttribute(): bool
+    {
+        return $this->smoking_allowed;
     }
 }

@@ -19,22 +19,60 @@ class RoomController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $rooms = Cache::tags(['rooms'])->remember('rooms_list', 3600, function () {
-            return Room::with(['roomType', 'roomType.translations'])->get();
-        });
+        $query = Room::with(['roomType.translations', 'currentBooking.user']);
 
-        return view('admin.rooms.index', compact('rooms'));
+        // Apply filters
+        if ($request->filled('room_type')) {
+            $query->where('room_type_id', $request->room_type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('floor')) {
+            $query->where('floor_number', $request->floor);
+        }
+
+        $rooms = $query->paginate(15);
+
+        // Get statistics
+        $stats = [
+            'total' => Room::count(),
+            'available' => Room::where('status', 'available')->count(),
+            'reserved' => Room::where('status', 'reserved')->count(),
+            'onboard' => Room::where('status', 'onboard')->count(),
+            'closed' => Room::where('status', 'closed')->count(),
+        ];
+
+        $roomTypes = RoomType::with('translations')->get();
+
+        return view('admin.rooms.index', compact('rooms', 'stats', 'roomTypes'));
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         $roomTypes = RoomType::with('translations')->where('is_active', true)->get();
-        return view('admin.rooms.create', compact('roomTypes'));
+        
+        // Add room type data for JavaScript preview
+        $roomTypesData = $roomTypes->map(function($roomType) {
+            return [
+                'id' => $roomType->id,
+                'name' => $roomType->name,
+                'code' => $roomType->code,
+                'base_price' => $roomType->base_price,
+                'max_occupancy' => $roomType->max_occupancy,
+                'description' => $roomType->description,
+                'amenities' => $roomType->amenities
+            ];
+        });
+
+        return view('admin.rooms.create', compact('roomTypes', 'roomTypesData'));
     }
 
     /**
@@ -45,9 +83,9 @@ class RoomController extends Controller
         $this->validate($request, [
             'room_number' => 'required|string|max:20|unique:rooms',
             'room_type_id' => 'required|exists:room_types,id',
-            'floor_number' => 'required|integer|min:1',
-            'size' => 'nullable|numeric|min:0',
-            'smoking_allowed' => 'boolean',
+            'floor' => 'required|integer|min:0',
+            'is_smoking' => 'boolean',
+            'status' => 'required|in:available,closed',
             'notes' => 'nullable|string',
         ]);
 
@@ -55,10 +93,9 @@ class RoomController extends Controller
             Room::create([
                 'room_number' => $request->room_number,
                 'room_type_id' => $request->room_type_id,
-                'floor_number' => $request->floor_number,
-                'size' => $request->size,
-                'smoking_allowed' => $request->smoking_allowed ?? false,
-                'status' => 'available',
+                'floor' => $request->floor,
+                'is_smoking' => $request->boolean('is_smoking'),
+                'status' => $request->status,
                 'notes' => $request->notes,
             ]);
 

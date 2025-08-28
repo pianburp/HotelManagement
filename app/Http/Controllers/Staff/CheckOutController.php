@@ -15,15 +15,14 @@ class CheckOutController extends Controller
      */
     public function index(Request $request)
     {
-        $date = $request->get('date', Carbon::today()->format('Y-m-d'));
-        
         $checkOuts = Booking::with(['user', 'room.roomType'])
-            ->where('check_out_date', $date)
-            ->whereIn('status', ['confirmed', 'checked_in'])
+            ->whereHas('room', function($query) {
+                $query->where('status', 'onboard');
+            })
             ->orderBy('check_out_date')
             ->get();
 
-        return view('staff.checkout.index', compact('checkOuts', 'date'));
+        return view('staff.checkout.index', compact('checkOuts'));
     }
 
     /**
@@ -34,8 +33,7 @@ class CheckOutController extends Controller
         $booking->load(['user', 'room.roomType', 'payments']);
 
         // Verify this is a valid check-out
-        if ($booking->check_out_date->isAfter(Carbon::today()) || 
-            !in_array($booking->status, ['confirmed', 'checked_in'])) {
+        if (!in_array($booking->status, ['checked_in']) || $booking->room->status !== 'onboard') {
             return redirect()->route('staff.checkout.index')
                 ->with('error', 'This booking is not ready for check-out.');
         }
@@ -51,7 +49,7 @@ class CheckOutController extends Controller
         $request->validate([
             'damages' => 'nullable|string|max:500',
             'additional_charges' => 'nullable|numeric|min:0',
-            'room_condition' => 'required|in:good,needs_cleaning,needs_maintenance',
+            'room_condition' => 'required|in:good,needs_maintenance',
             'notes' => 'nullable|string|max:500',
         ]);
 
@@ -78,9 +76,8 @@ class CheckOutController extends Controller
         // Update room status based on condition
         $roomStatus = match($request->room_condition) {
             'good' => 'available',
-            'needs_cleaning' => 'reserved',
             'needs_maintenance' => 'closed',
-            default => 'reserved'
+            default => 'available'
         };
 
         $booking->room->update(['status' => $roomStatus]);
@@ -91,11 +88,14 @@ class CheckOutController extends Controller
             $reason .= ' (' . str_replace('_', ' ', $request->room_condition) . ')';
         }
 
-        $booking->room->statusHistory()->create([
-            'status' => $roomStatus,
-            'reason' => $reason,
-            'changed_by' => auth()->id(),
-        ]);
+        if (method_exists($booking->room, 'statusHistory')) {
+            $booking->room->statusHistory()->create([
+                'new_status' => $roomStatus,
+                'old_status' => $booking->room->getOriginal('status'),
+                'reason' => $reason,
+                'changed_by' => auth()->id(),
+            ]);
+        }
 
         return redirect()->route('staff.checkout.index')
             ->with('success', 'Guest checked out successfully!');

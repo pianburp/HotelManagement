@@ -77,7 +77,7 @@ class RoomStatusController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', __('Room status updated successfully.'));
+    return redirect()->route('staff.rooms.index')->with('success', __('Room status updated successfully.'));
     }
 
     /**

@@ -21,9 +21,9 @@ class RoomTypeController extends Controller
      */
     public function index()
     {
-        $roomTypes = Cache::tags(['room_types'])->remember('room_types_list', 3600, function () {
-            return RoomType::with(['translations', 'media'])->get();
-        });
+        $roomTypes = RoomType::with(['translations', 'media'])
+            ->withCount(['rooms'])
+            ->paginate(10);
 
         return view('admin.room-types.index', compact('roomTypes'));
     }
@@ -97,7 +97,15 @@ class RoomTypeController extends Controller
      */
     public function show(RoomType $roomType)
     {
-        $roomType->load(['translations', 'media', 'rooms']);
+        $roomType->load(['translations', 'media', 'rooms.bookings']);
+        
+        // Get room statistics
+        $roomType->rooms_count = $roomType->rooms()->count();
+        $roomType->available_rooms_count = $roomType->rooms()->where('status', 'available')->count();
+        $roomType->occupied_rooms_count = $roomType->rooms()->where('status', 'onboard')->count();
+        $roomType->maintenance_rooms_count = $roomType->rooms()->where('status', 'closed')->count();
+        $roomType->waitlist_count = $roomType->waitlist()->where('status', 'pending')->count();
+
         return view('admin.room-types.show', compact('roomType'));
     }
 

@@ -13,6 +13,7 @@
                             <div>
                                 <div class="font-medium">{{ $booking->guest_name ?? $booking->user->name }}</div>
                                 <div class="text-sm text-gray-500">{{ __('Room') }}: {{ $booking->room->room_number ?? '-' }}</div>
+                                <div class="text-xs text-gray-400">{{ __('Check-out') }}: {{ $booking->check_out_date->format('M d, Y') }}</div>
                             </div>
                             <div class="flex gap-2">
                                 <a href="{{ route('staff.checkout.show', $booking) }}" class="text-indigo-600">{{ __('View') }}</a>
