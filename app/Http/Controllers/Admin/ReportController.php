@@ -20,6 +20,10 @@ class ReportController extends Controller
 
     /**
      * Display the main reports dashboard.
+     * 
+     * Security Note: Revenue calculations are based on completed payments,
+     * not booking status, to ensure accurate financial reporting and prevent
+     * revenue inflation from uncollected bookings.
      */
     public function index()
     {
@@ -192,7 +196,7 @@ class ReportController extends Controller
             ->map(function ($payment) {
                 return [
                     'title' => 'Payment Received',
-                    'description' => '$' . number_format($payment->amount, 2) . ' from ' . $payment->booking->guest_name,
+                    'description' => money($payment->amount) . ' from ' . $payment->booking->guest_name,
                     'time' => $payment->created_at->diffForHumans(),
                     'color' => 'bg-blue-500',
                     'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>',
@@ -331,7 +335,7 @@ class ReportController extends Controller
      */
     private function getPaymentMethodBreakdown($startDate, $endDate)
     {
-    return Payment::where('payment_status', 'completed')
+        return Payment::where('payment_status', 'completed')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy('payment_method')
             ->selectRaw('payment_method, COUNT(*) as count, SUM(amount) as total')

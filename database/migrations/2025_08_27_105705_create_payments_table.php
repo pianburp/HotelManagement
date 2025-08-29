@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('booking_id')->constrained();
             $table->enum('payment_method', ['credit_card', 'debit_card', 'bank_transfer', 'cash']);
             $table->decimal('amount', 10, 2);
-            $table->string('currency', 3)->default('USD');
+            $table->string('currency', 3)->default('MYR');
             $table->string('transaction_id')->nullable();
             $table->enum('payment_status', ['pending', 'completed', 'failed', 'refunded'])->default('pending');
             $table->string('payment_gateway', 50)->nullable();

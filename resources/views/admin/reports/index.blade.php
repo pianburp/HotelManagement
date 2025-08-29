@@ -129,17 +129,17 @@
                         <h3 class="text-lg font-semibold mb-4">{{ __('Room Type Performance') }}</h3>
                         <div class="space-y-4">
                             @foreach($roomTypeStats as $stat)
-                                <div class="flex items-center justify-between">
-                                    <div>
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 py-2">
+                                    <div class="flex-1 flex flex-col justify-center">
                                         <div class="font-medium">{{ $stat['name'] }}</div>
                                         <div class="text-sm text-gray-500">{{ $stat['total_rooms'] }} {{ __('rooms') }}</div>
                                     </div>
-                                    <div class="text-right">
+                                    <div class="flex-1 flex flex-col items-end justify-center text-right">
                                         <div class="font-medium">{{ $stat['occupancy_rate'] }}%</div>
                                         <div class="text-sm text-gray-500">{{ money($stat['revenue']) }}</div>
                                     </div>
-                                    <div class="w-24">
-                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="flex-1 flex items-center justify-end">
+                                        <div class="w-28 bg-gray-200 rounded-full h-2">
                                             <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $stat['occupancy_rate'] }}%"></div>
                                         </div>
                                     </div>
@@ -302,7 +302,7 @@
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return '$' + value.toLocaleString();
+                                return 'RM' + value.toLocaleString();
                             }
                         }
                     }

@@ -75,7 +75,7 @@
                                             {{ $upcomingBooking->check_in->format('M d, Y') }} - {{ $upcomingBooking->check_out->format('M d, Y') }}
                                         </p>
                                         <p class="text-xs text-blue-500 mt-1">
-                                            {{ $upcomingBooking->check_in->diffInDays(now()) }} {{ __('days until check-in') }}
+                                            {{ (int) abs(now()->startOfDay()->diffInDays($upcomingBooking->check_in->startOfDay())) }} {{ __('days until check-in') }}
                                         </p>
                                     </div>
                                     <x-primary-button onclick="window.location='{{ route('user.bookings.show', $upcomingBooking) }}'">

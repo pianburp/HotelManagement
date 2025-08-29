@@ -127,5 +127,8 @@ class DatabaseSeeder extends Seeder
 
         // Add sample data for testing
         $this->call(SampleDataSeeder::class);
+        
+        // Create payment records for existing bookings
+        $this->call(PaymentSeeder::class);
     }
 }

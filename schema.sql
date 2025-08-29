@@ -80,7 +80,7 @@ CREATE TABLE payments (
     booking_id BIGINT UNSIGNED NOT NULL,
     payment_method ENUM('credit_card', 'debit_card', 'bank_transfer', 'cash') NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'USD',
+    currency VARCHAR(3) DEFAULT 'MYR',
     transaction_id VARCHAR(255),
     payment_status ENUM('completed', 'failed', 'refunded') DEFAULT 'failed',
     payment_gateway VARCHAR(50),

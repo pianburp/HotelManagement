@@ -113,25 +113,27 @@
             const roomTypeDetails = document.getElementById('room-type-details');
 
             // Room type data (you would pass this from the controller)
-            const roomTypesData = @json($roomTypes->map(function($rt) {
-                return [
-                    'id' => $rt->id,
-                    'name' => $rt->name,
-                    'code' => $rt->code,
-                    'base_price' => $rt->base_price,
-                    'max_occupancy' => $rt->max_occupancy,
-                    'description' => $rt->description,
-                    'amenities' => $rt->amenities
-                ];
-            }));
+            const roomTypesData = @json($roomTypesData);
 
             roomTypeSelect.addEventListener('change', function() {
                 const selectedId = this.value;
                 
                 if (selectedId) {
                     const roomType = roomTypesData.find(rt => rt.id == selectedId);
-                    
                     if (roomType) {
+                        let amenitiesHtml = '';
+                        if (roomType.amenities && Array.isArray(roomType.amenities) && roomType.amenities.length > 0) {
+                            amenitiesHtml = '<div class="mt-4">'
+                                + '<dt class="text-sm font-medium text-gray-500">' + '{{ __('Amenities') }}' + '</dt>'
+                                + '<dd class="mt-1">'
+                                + '<div class="flex flex-wrap gap-2">'
+                                + roomType.amenities.map(function(amenity) {
+                                    return '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">' + amenity + '</span>';
+                                }).join('')
+                                + '</div>'
+                                + '</dd>'
+                                + '</div>';
+                        }
                         roomTypeDetails.innerHTML = `
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -149,20 +151,7 @@
                                     <dd class="mt-1 text-sm text-gray-900">${roomType.description}</dd>
                                 </div>
                             ` : ''}
-                            ${roomType.amenities && roomType.amenities.length > 0 ? `
-                                <div class="mt-4">
-                                    <dt class="text-sm font-medium text-gray-500">{{ __('Amenities') }}</dt>
-                                    <dd class="mt-1">
-                                        <div class="flex flex-wrap gap-2">
-                                            ${roomType.amenities.map(amenity => `
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    ${amenity}
-                                                </span>
-                                            `).join('')}
-                                        </div>
-                                    </dd>
-                                </div>
-                            ` : ''}
+                            ${amenitiesHtml}
                         `;
                         roomTypePreview.style.display = 'block';
                     }

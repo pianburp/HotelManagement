@@ -13,8 +13,8 @@
                     <div class="p-6">
                         <div class="flex items-center">
                             <div class="p-3 rounded-full bg-blue-500 bg-opacity-75">
-                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"></path>
+                                <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                                 </svg>
                             </div>
                             <div class="mx-5">
@@ -93,9 +93,13 @@
                                         <p class="text-xs text-gray-500">{{ $booking->check_in->format('M d') }} - {{ $booking->check_out->format('M d, Y') }}</p>
                                     </div>
                                     <span class="px-2 py-1 text-xs rounded-full 
-                                        @if($booking->status === 'confirmed') bg-green-100 text-green-800
-                                        @elseif($booking->status === 'pending') bg-yellow-100 text-yellow-800
-                                        @else bg-red-100 text-red-800
+                                        @if($booking->status === 'pending') bg-yellow-100 text-yellow-800 border border-yellow-300
+                                        @elseif($booking->status === 'confirmed') bg-green-100 text-green-800 border border-green-300
+                                        @elseif($booking->status === 'checked_in') bg-blue-100 text-blue-800 border border-blue-300
+                                        @elseif($booking->status === 'cancelled') bg-gray-200 text-gray-700 border border-gray-400
+                                        @elseif($booking->status === 'completed') bg-purple-100 text-purple-800 border border-purple-300
+                                        @elseif($booking->status === 'no_show') bg-red-100 text-red-800 border border-red-300
+                                        @else bg-gray-100 text-gray-800 border border-gray-300
                                         @endif">
                                         {{ ucfirst($booking->status) }}
                                     </span>
