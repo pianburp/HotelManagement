@@ -21,7 +21,7 @@ class RoomController extends Controller
      */
     public function index(Request $request)
     {
-    $query = Room::with(['roomType.translations', 'currentBooking.user', 'upcomingBooking']);
+        $query = Room::with(['roomType.translations', 'currentBooking.user', 'upcomingBooking']);
 
         // Apply filters
         if ($request->filled('room_type')) {
@@ -36,6 +36,30 @@ class RoomController extends Controller
             $query->where('floor_number', $request->floor);
         }
 
+        // Search functionality
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('room_number', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhereHas('roomType', function($q) use ($search) {
+                      $q->whereHas('translations', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
+                  });
+            });
+        }
+
+        // Sorting
+        $sortBy = $request->get('sort', 'room_number');
+        $sortDirection = $request->get('direction', 'asc');
+        
+        if (in_array($sortBy, ['room_number', 'floor_number', 'status', 'updated_at'])) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->orderBy('room_number', 'asc');
+        }
+
         $rooms = $query->paginate(15);
 
         // Get statistics
@@ -48,8 +72,9 @@ class RoomController extends Controller
         ];
 
         $roomTypes = RoomType::with('translations')->get();
+        $floors = Room::distinct('floor_number')->orderBy('floor_number')->pluck('floor_number');
 
-        return view('admin.rooms.index', compact('rooms', 'stats', 'roomTypes'));
+        return view('admin.rooms.index', compact('rooms', 'stats', 'roomTypes', 'floors'));
     }
 
     /**
@@ -83,8 +108,9 @@ class RoomController extends Controller
         $this->validate($request, [
             'room_number' => 'required|string|max:20|unique:rooms',
             'room_type_id' => 'required|exists:room_types,id',
-            'floor' => 'required|integer|min:0',
-            'is_smoking' => 'boolean',
+            'floor_number' => 'required|integer|min:1',
+            'size' => 'nullable|numeric|min:0',
+            'smoking_allowed' => 'boolean',
             'status' => 'required|in:available,closed',
             'notes' => 'nullable|string',
         ]);
@@ -93,8 +119,9 @@ class RoomController extends Controller
             Room::create([
                 'room_number' => $request->room_number,
                 'room_type_id' => $request->room_type_id,
-                'floor' => $request->floor,
-                'is_smoking' => $request->boolean('is_smoking'),
+                'floor_number' => $request->floor_number,
+                'size' => $request->size,
+                'smoking_allowed' => $request->boolean('smoking_allowed'),
                 'status' => $request->status,
                 'notes' => $request->notes,
             ]);
@@ -113,7 +140,7 @@ class RoomController extends Controller
      */
     public function show(Room $room)
     {
-        $room->load(['roomType', 'roomType.translations', 'statusHistory']);
+        $room->load(['roomType.translations', 'statusHistory.changedBy']);
         return view('admin.rooms.show', compact('room'));
     }
 
@@ -131,41 +158,49 @@ class RoomController extends Controller
      */
     public function update(Request $request, Room $room)
     {
+        $oldStatus = $room->status;
+        
         $this->validate($request, [
             'room_number' => 'required|string|max:20|unique:rooms,room_number,' . $room->id,
             'room_type_id' => 'required|exists:room_types,id',
             'floor_number' => 'required|integer|min:1',
             'size' => 'nullable|numeric|min:0',
             'smoking_allowed' => 'boolean',
+            'status' => 'required|in:available,reserved,onboard,closed',
             'notes' => 'nullable|string',
+            'last_maintenance' => 'nullable|date',
+            'status_change_reason' => $request->status !== $oldStatus ? 'required|string' : 'nullable|string',
         ]);
 
         try {
-            $oldStatus = $room->status;
-            $room->update([
-                'room_number' => $request->room_number,
-                'room_type_id' => $request->room_type_id,
-                'floor_number' => $request->floor_number,
-                'size' => $request->size,
-                'smoking_allowed' => $request->smoking_allowed ?? false,
-                'notes' => $request->notes,
-            ]);
-
-            if ($request->has('status') && $request->status !== $oldStatus) {
-                $room->statusHistory()->create([
-                    'previous_status' => $oldStatus,
-                    'new_status' => $request->status,
-                    'changed_by' => auth()->id(),
-                    'reason' => $request->status_change_reason,
-                    'created_at' => now(),
+            DB::transaction(function () use ($room, $request, $oldStatus) {
+                // Update room information
+                $room->update([
+                    'room_number' => $request->room_number,
+                    'room_type_id' => $request->room_type_id,
+                    'floor_number' => $request->floor_number,
+                    'size' => $request->size,
+                    'smoking_allowed' => $request->boolean('smoking_allowed'),
+                    'status' => $request->status,
+                    'notes' => $request->notes,
+                    'last_maintenance' => $request->last_maintenance,
                 ]);
 
-                $room->update(['status' => $request->status]);
-            }
+                // If status changed, record in history
+                if ($request->status !== $oldStatus && $request->filled('status_change_reason')) {
+                    $room->statusHistory()->create([
+                        'previous_status' => $oldStatus,
+                        'new_status' => $request->status,
+                        'changed_by' => auth()->id(),
+                        'reason' => $request->status_change_reason,
+                        'created_at' => now(),
+                    ]);
+                }
+            });
 
             Cache::tags(['rooms'])->flush();
 
-            return redirect()->route('admin.rooms.index')
+            return redirect()->route('admin.rooms.show', $room)
                            ->with('success', 'Room updated successfully.');
         } catch (\Exception $e) {
             return back()->with('error', 'Error updating room: ' . $e->getMessage());
@@ -222,6 +257,51 @@ class RoomController extends Controller
             return back()->with('success', 'Room status updated successfully.');
         } catch (\Exception $e) {
             return back()->with('error', 'Error updating room status: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk update room statuses.
+     */
+    public function bulkUpdateStatus(Request $request)
+    {
+        $this->validate($request, [
+            'room_ids' => 'required|array',
+            'room_ids.*' => 'exists:rooms,id',
+            'status' => 'required|in:available,reserved,onboard,closed',
+            'reason' => 'required|string',
+        ]);
+
+        try {
+            $updatedCount = 0;
+            
+            DB::transaction(function () use ($request, &$updatedCount) {
+                $rooms = Room::whereIn('id', $request->room_ids)->get();
+                
+                foreach ($rooms as $room) {
+                    $oldStatus = $room->status;
+                    
+                    if ($oldStatus !== $request->status) {
+                        $room->update(['status' => $request->status]);
+                        
+                        $room->statusHistory()->create([
+                            'previous_status' => $oldStatus,
+                            'new_status' => $request->status,
+                            'changed_by' => auth()->id(),
+                            'reason' => $request->reason,
+                            'created_at' => now(),
+                        ]);
+                        
+                        $updatedCount++;
+                    }
+                }
+            });
+
+            Cache::tags(['rooms'])->flush();
+
+            return back()->with('success', "Successfully updated status for {$updatedCount} room(s).");
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error updating room statuses: ' . $e->getMessage());
         }
     }
 

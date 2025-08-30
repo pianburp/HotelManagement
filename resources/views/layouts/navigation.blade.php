@@ -46,6 +46,9 @@
                         <x-nav-link :href="route('staff.waitlist.index')" :active="request()->routeIs('staff.waitlist.*')">
                             {{ __('Waitlist') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('staff.reports.index')" :active="request()->routeIs('staff.reports.*')">
+                            {{ __('Reports') }}
+                        </x-nav-link>
                     @endrole
 
                     {{-- Regular user links --}}
@@ -145,6 +148,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('staff.waitlist.index')" :active="request()->routeIs('staff.waitlist.*')">
                     {{ __('Waitlist') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('staff.reports.index')" :active="request()->routeIs('staff.reports.*')">
+                    {{ __('Reports') }}
                 </x-responsive-nav-link>
             @endrole
 

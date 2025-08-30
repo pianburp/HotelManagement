@@ -43,19 +43,27 @@
 
                             <!-- Floor -->
                             <div>
-                                <x-input-label for="floor" :value="__('Floor')" />
-                                <x-text-input id="floor" class="block mt-1 w-full" type="number" min="0" name="floor" 
-                                            :value="old('floor')" required />
-                                <x-input-error :messages="$errors->get('floor')" class="mt-2" />
+                                <x-input-label for="floor_number" :value="__('Floor Number')" />
+                                <x-text-input id="floor_number" class="block mt-1 w-full" type="number" min="1" name="floor_number" 
+                                            :value="old('floor_number')" required />
+                                <x-input-error :messages="$errors->get('floor_number')" class="mt-2" />
+                            </div>
+
+                            <!-- Size -->
+                            <div>
+                                <x-input-label for="size" :value="__('Room Size (m²) - Optional')" />
+                                <x-text-input id="size" class="block mt-1 w-full" type="number" step="0.01" min="0" name="size" 
+                                            :value="old('size')" />
+                                <x-input-error :messages="$errors->get('size')" class="mt-2" />
                             </div>
 
                             <!-- Smoking -->
                             <div class="flex items-center">
-                                <input id="is_smoking" type="checkbox" name="is_smoking" value="1" 
-                                       {{ old('is_smoking') ? 'checked' : '' }}
+                                <input id="smoking_allowed" type="checkbox" name="smoking_allowed" value="1" 
+                                       {{ old('smoking_allowed') ? 'checked' : '' }}
                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                                <x-input-label for="is_smoking" :value="__('Smoking Room')" class="ml-2" />
-                                <x-input-error :messages="$errors->get('is_smoking')" class="mt-2" />
+                                <x-input-label for="smoking_allowed" :value="__('Smoking Allowed')" class="ml-2" />
+                                <x-input-error :messages="$errors->get('smoking_allowed')" class="mt-2" />
                             </div>
 
                             <!-- Status -->

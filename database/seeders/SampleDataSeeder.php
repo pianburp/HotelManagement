@@ -37,6 +37,9 @@ class SampleDataSeeder extends Seeder
             Booking::create([
                 'booking_reference' => 'BK5001',
                 'user_id' => $user->id,
+                'guest_name' => $user->name,
+                'guest_email' => $user->email,
+                'guest_phone' => $user->phone ?? '+60123456789',
                 'room_id' => $rooms[0]->id,
                 'check_in_date' => Carbon::today()->addDays(3),
                 'check_out_date' => Carbon::today()->addDays(6),
@@ -48,6 +51,10 @@ class SampleDataSeeder extends Seeder
             // Past booking (completed)
             Booking::create([
                 'booking_reference' => 'BK5002',
+                'user_id' => $user->id,
+                'guest_name' => $user->name,
+                'guest_email' => $user->email,
+                'guest_phone' => $user->phone ?? '+60123456789',
                 'user_id' => $user->id,
                 'room_id' => $rooms[1]->id,
                 'check_in_date' => Carbon::today()->subDays(2),
@@ -61,6 +68,9 @@ class SampleDataSeeder extends Seeder
             $todayBooking = Booking::create([
                 'booking_reference' => 'BK5003',
                 'user_id' => $user->id,
+                'guest_name' => $user->name,
+                'guest_email' => $user->email,
+                'guest_phone' => $user->phone ?? '+60123456789',
                 'room_id' => $rooms[2]->id,
                 'check_in_date' => Carbon::today(),
                 'check_out_date' => Carbon::today()->addDays(2),
@@ -73,6 +83,9 @@ class SampleDataSeeder extends Seeder
             Booking::create([
                 'booking_reference' => 'BK5004',
                 'user_id' => $user->id,
+                'guest_name' => $user->name,
+                'guest_email' => $user->email,
+                'guest_phone' => $user->phone ?? '+60123456789',
                 'room_id' => $rooms[3]->id,
                 'check_in_date' => Carbon::yesterday(),
                 'check_out_date' => Carbon::today(),

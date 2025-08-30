@@ -49,6 +49,9 @@ Route::middleware('auth')->group(function () {
         
         // Room Management
         Route::resource('rooms', App\Http\Controllers\Admin\RoomController::class);
+        Route::patch('/rooms/{room}/status', [App\Http\Controllers\Admin\RoomController::class, 'updateStatus'])->name('rooms.update-status');
+        Route::patch('/rooms/bulk-status', [App\Http\Controllers\Admin\RoomController::class, 'bulkUpdateStatus'])->name('rooms.bulk-status');
+        Route::patch('/rooms/bulk-status', [App\Http\Controllers\Admin\RoomController::class, 'bulkUpdateStatus'])->name('rooms.bulk-status');
         
         // Booking Management
         Route::resource('bookings', App\Http\Controllers\Admin\BookingController::class);
@@ -88,6 +91,9 @@ Route::middleware('auth')->group(function () {
         // Waitlist Management
         Route::get('/waitlist', [App\Http\Controllers\Staff\WaitlistController::class, 'index'])->name('waitlist.index');
         Route::patch('/waitlist/{waitlist}/notify', [App\Http\Controllers\Staff\WaitlistController::class, 'notify'])->name('waitlist.notify');
+
+        // Reports
+        Route::get('/reports', [App\Http\Controllers\Staff\ReportController::class, 'index'])->name('reports.index');
     });
 });
 

@@ -41,16 +41,16 @@
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <!-- Price Range -->
+                            <!-- Updated to a single slider for Min/Max Price -->
                             <div>
-                                <x-input-label for="price_min" :value="__('Min Price')" />
-                                <x-text-input id="price_min" type="number" name="price_min" 
-                                    :value="request('price_min')" class="mt-1 block w-full" />
-                            </div>
-                            <div>
-                                <x-input-label for="price_max" :value="__('Max Price')" />
-                                <x-text-input id="price_max" type="number" name="price_max" 
-                                    :value="request('price_max')" class="mt-1 block w-full" />
+                                <x-input-label for="price_range" :value="__('Price Range')" />
+                                <div id="price_range" class="mt-1 block w-full"></div>
+                                <div class="flex justify-between text-sm text-gray-600 mt-2">
+                                    <span id="price_min_display">RM{{ request('price_min', $minPrice) }}</span>
+                                    <span id="price_max_display">RM{{ request('price_max', $maxPrice) }}</span>
+                                </div>
+                                <input type="hidden" id="price_min" name="price_min" value="{{ request('price_min', $minPrice) }}">
+                                <input type="hidden" id="price_max" name="price_max" value="{{ request('price_max', $maxPrice) }}">
                             </div>
                             <!-- Room Type -->
                             <div>
@@ -205,6 +205,34 @@
         </div>
     </div>
 
+    <!-- Include noUiSlider CSS and JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.6.0/nouislider.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.6.0/nouislider.min.js"></script>
+
+    <!-- Refined slider for a minimalist approach -->
+    <style>
+        #price_range .noUi-handle {
+            background-color: #383a3eff; 
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            box-shadow: none;
+            border: none; /* Remove default border */
+        }
+
+        #price_range .noUi-handle:before, #price_range .noUi-handle:after {
+            display: none; /* Hide default pseudo-elements */
+        }
+
+        #price_range .noUi-connect {
+            background-color: #38B2AC; 
+        }
+
+        #price_range {
+            height: 6px;
+        }
+    </style>
+
     <script>
         // Date validation
         document.addEventListener('DOMContentLoaded', function() {
@@ -222,6 +250,42 @@
                 if (checkOutInput.value && new Date(checkOutInput.value) <= checkInDate) {
                     checkOutInput.value = minCheckOut.toISOString().split('T')[0];
                 }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const priceRange = document.getElementById('price_range');
+            const priceMinInput = document.getElementById('price_min');
+            const priceMaxInput = document.getElementById('price_max');
+            const priceMinDisplay = document.getElementById('price_min_display');
+            const priceMaxDisplay = document.getElementById('price_max_display');
+
+            // Get dynamic price range from the server
+            const minPrice = {{ $minPrice }};
+            const maxPrice = {{ $maxPrice }};
+
+            // Initialize noUiSlider with dynamic range
+            noUiSlider.create(priceRange, {
+                start: [
+                    parseFloat(priceMinInput.value) || minPrice, 
+                    parseFloat(priceMaxInput.value) || maxPrice
+                ],
+                connect: true,
+                range: {
+                    'min': minPrice,
+                    'max': maxPrice
+                },
+                step: 10
+            });
+
+            priceRange.noUiSlider.on('update', function(values) {
+                const minValue = Math.round(values[0]);
+                const maxValue = Math.round(values[1]);
+                
+                priceMinDisplay.textContent = 'RM' + minValue;
+                priceMaxDisplay.textContent = 'RM' + maxValue;
+                priceMinInput.value = minValue;
+                priceMaxInput.value = maxValue;
             });
         });
     </script>

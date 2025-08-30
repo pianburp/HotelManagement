@@ -14,7 +14,10 @@
                         <div class="flex items-center">
                             <div class="p-3 rounded-full bg-blue-500 bg-opacity-75">
                                 <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none"></rect>
+                                    <line x1="8" y1="8" x2="16" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+                                    <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+                                    <line x1="8" y1="16" x2="12" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
                                 </svg>
                             </div>
                             <div class="mx-5">
@@ -45,15 +48,21 @@
                     <div class="p-6">
                         <div class="flex items-center">
                             <div class="p-3 rounded-full bg-orange-500 bg-opacity-75">
+                                <span class="sr-only">{{ __('Waitlist') }}</span>
                                 <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+                                    <circle cx="4" cy="6" r="1.5" fill="currentColor"></circle>
+                                    <circle cx="4" cy="12" r="1.5" fill="currentColor"></circle>
+                                    <circle cx="4" cy="18" r="1.5" fill="currentColor"></circle>
+                                    <line x1="10" y1="6" x2="20" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+                                    <line x1="10" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+                                    <line x1="10" y1="18" x2="20" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
                                 </svg>
                             </div>
                             <div class="mx-5">
                                 <h4 class="text-2xl font-semibold text-gray-700">{{ $stats['active_waitlist'] }}</h4>
                                 <div class="text-gray-500">{{ __('Waitlist Requests') }}</div>
                             </div>
-                        </div>
+                        </div>      
                     </div>
                 </div>
             </div>
@@ -121,37 +130,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Quick Search -->
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">{{ __('Find Your Perfect Room') }}</h3>
-                            <form action="{{ route('user.rooms.search') }}" method="GET" class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <x-input-label for="quick_check_in" :value="__('Check In')" />
-                                        <x-text-input id="quick_check_in" type="date" name="check_in" 
-                                            class="mt-1 block w-full" 
-                                            min="{{ date('Y-m-d') }}" />
-                                    </div>
-                                    <div>
-                                        <x-input-label for="quick_check_out" :value="__('Check Out')" />
-                                        <x-text-input id="quick_check_out" type="date" name="check_out" 
-                                            class="mt-1 block w-full" 
-                                            min="{{ date('Y-m-d', strtotime('+1 day')) }}" />
-                                    </div>
-                                </div>
-                                <div class="flex gap-4">
-                                    <x-primary-button type="submit" class="flex-1">
-                                        {{ __('Search Rooms') }}
-                                    </x-primary-button>
-                                    <x-secondary-button type="button" onclick="window.location='{{ route('user.rooms.index') }}'" class="flex-1">
-                                        {{ __('Browse All') }}
-                                    </x-secondary-button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Sidebar -->
@@ -182,24 +160,6 @@
                         </div>
                     </div>
                     @endif
-
-                    <!-- Quick Actions -->
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div class="p-6">
-                            <h3 class="text-lg font-semibold mb-4">{{ __('Quick Actions') }}</h3>
-                            <div class="space-y-3">
-                                <x-primary-button onclick="window.location='{{ route('user.rooms.index') }}'" class="w-full">
-                                    {{ __('Browse Rooms') }}
-                                </x-primary-button>
-                                <x-secondary-button onclick="window.location='{{ route('user.bookings.history') }}'" class="w-full">
-                                    {{ __('My Bookings') }}
-                                </x-secondary-button>
-                                <x-secondary-button onclick="window.location='{{ route('user.waitlist.index') }}'" class="w-full">
-                                    {{ __('Manage Waitlist') }}
-                                </x-secondary-button>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Help & Support -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">

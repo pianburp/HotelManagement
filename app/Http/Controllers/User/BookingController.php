@@ -27,6 +27,14 @@ class BookingController extends Controller
         $roomTypes = RoomType::with('translations')->get();
         $amenities = config('hotel.amenities', []);
 
+        // Get price range from available room types
+        $priceRange = RoomType::where('is_active', true)
+            ->selectRaw('MIN(base_price) as min_price, MAX(base_price) as max_price')
+            ->first();
+        
+        $minPrice = $priceRange->min_price ?? 0;
+        $maxPrice = $priceRange->max_price ?? 1000;
+
         // Add status colors for the view
         $statusColors = [
             'available' => 'bg-green-500',
@@ -35,7 +43,7 @@ class BookingController extends Controller
             'maintenance' => 'bg-yellow-500'
         ];
 
-        return view('user.rooms.index', compact('rooms', 'roomTypes', 'amenities', 'statusColors'));
+        return view('user.rooms.index', compact('rooms', 'roomTypes', 'amenities', 'statusColors', 'minPrice', 'maxPrice'));
     }
 
     /**
@@ -58,7 +66,7 @@ class BookingController extends Controller
             if ($checkOut > $checkIn) {
                 $numberOfNights = $checkIn->diffInDays($checkOut);
                 $subtotal = $room->roomType->base_price * $numberOfNights;
-                $taxes = $subtotal * 0.10; // 10% tax rate
+                $taxes = $subtotal * 0.10;
                 $total = $subtotal + $taxes;
             }
         }
@@ -278,7 +286,15 @@ class BookingController extends Controller
         $roomTypes = RoomType::with('translations')->get();
         $amenities = config('hotel.amenities', []);
 
-        return view('user.rooms.index', compact('rooms', 'roomTypes', 'amenities'));
+        // Get price range from available room types
+        $priceRange = RoomType::where('is_active', true)
+            ->selectRaw('MIN(base_price) as min_price, MAX(base_price) as max_price')
+            ->first();
+        
+        $minPrice = $priceRange->min_price ?? 0;
+        $maxPrice = $priceRange->max_price ?? 1000;
+
+        return view('user.rooms.index', compact('rooms', 'roomTypes', 'amenities', 'minPrice', 'maxPrice'));
     }
 
     /**
