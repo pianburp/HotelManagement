@@ -59,12 +59,13 @@ class BookingController extends Controller
     {
         $room = Room::with(['roomType.translations'])->findOrFail($request->room);
         
-        // Calculate booking details if dates are provided
-        $numberOfNights = 0;
-        $subtotal = 0;
-        $taxes = 0;
-        $total = 0;
+        // Set default values for pricing display
+        $numberOfNights = 1; // Default to 1 night for display
+        $subtotal = $room->roomType->base_price; // Default to 1 night rate
+        $taxes = $subtotal * 0.10; // 10% tax rate
+        $total = $subtotal + $taxes;
         
+        // Calculate actual booking details if dates are provided
         if ($request->filled(['check_in', 'check_out'])) {
             $checkIn = Carbon::parse($request->check_in);
             $checkOut = Carbon::parse($request->check_out);
@@ -92,6 +93,7 @@ class BookingController extends Controller
     public function store(BookingRequest $request)
     {
         $room = Room::with('roomType')->findOrFail($request->room_id);
+        $user = auth()->user();
         
         // Calculate total amount
         $checkIn = Carbon::parse($request->check_in);
@@ -101,24 +103,28 @@ class BookingController extends Controller
         $taxes = $subtotal * 0.10; // 10% tax rate
         $totalAmount = $subtotal + $taxes;
 
-        $booking = Booking::create([
-            'user_id' => auth()->id(),
-            'room_id' => $request->room_id,
-            'check_in_date' => $request->check_in,
-            'check_out_date' => $request->check_out,
-            'guests_count' => $request->guests,
-            'special_requests' => $request->special_requests,
-            'total_amount' => $totalAmount,
-            'status' => 'confirmed',
-            'booking_reference' => $this->generateBookingReference(),
-            'booking_source' => 'website',
+        // Store booking data in session for payment processing
+        session([
+            'booking.room_id' => $request->room_id,
+            'booking.room_type' => $room->roomType->name,
+            'booking.room_number' => $room->room_number,
+            'booking.check_in' => $request->check_in,
+            'booking.check_out' => $request->check_out,
+            'booking.guests' => $request->guests,
+            'booking.special_requests' => $request->special_requests,
+            'booking.payment_method' => $request->payment_method,
+            'booking.nights' => $nights,
+            'booking.subtotal' => $subtotal,
+            'booking.taxes' => $taxes,
+            'booking.total' => 'RM ' . number_format($totalAmount, 2),
+            'booking.total_amount' => $totalAmount,
+            'booking.guest_name' => $user->name,
+            'booking.guest_email' => $user->email,
+            'booking.guest_phone' => $user->phone,
         ]);
 
-        // Update room status to reserved
-        $room->update(['status' => 'reserved']);
-
-        return redirect()->route('user.bookings.show', $booking)
-            ->with('success', 'Booking created successfully!');
+        // Redirect to payment demo instead of creating booking directly
+        return redirect()->route('user.payments.demo');
     }
 
     /**

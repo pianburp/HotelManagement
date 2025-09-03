@@ -42,54 +42,43 @@ class PaymentController extends Controller
     private function processSuccessPayment(Request $request)
     {
         try {
-            // Get booking data from session or request
-            $bookingData = [
-                'room_type' => session('booking.room_type', 'Deluxe Suite'),
-                'check_in' => session('booking.check_in', date('Y-m-d')),
-                'check_out' => session('booking.check_out', date('Y-m-d', strtotime('+3 days'))),
-                'guests' => session('booking.guests', '2'),
-                'payment_method' => session('booking.payment_method', 'credit_card'),
-                'total' => str_replace(['RM ', 'RM'], '', session('booking.total', '660.00')),
-            ];
-
-            // Find an available room (for demo purposes, use the first available room)
-            $room = Room::with('roomType')
-                ->whereHas('roomType', function ($query) {
-                    $query->where('is_active', true);
-                })
-                ->where('status', 'available')
-                ->first();
-
-            if (!$room) {
-                // Create a demo room if none exists
-                $room = $this->createDemoRoom();
+            $user = auth()->user();
+            
+            // Get booking data from session
+            $roomId = session('booking.room_id');
+            if (!$roomId) {
+                return redirect()->route('user.rooms.index')
+                    ->with('error', 'Booking session expired. Please start over.');
             }
 
-            // Calculate nights and total
-            $checkIn = Carbon::parse($bookingData['check_in']);
-            $checkOut = Carbon::parse($bookingData['check_out']);
-            $nights = $checkIn->diffInDays($checkOut);
-            $totalAmount = $room->roomType->base_price * $nights;
+            $room = Room::with('roomType')->find($roomId);
+            if (!$room) {
+                return redirect()->route('user.rooms.index')
+                    ->with('error', 'Room not found. Please select another room.');
+            }
 
-            // Create booking
+            // Create booking with session data
             $booking = Booking::create([
                 'booking_reference' => 'HMS-' . strtoupper(Str::random(6)),
-                'user_id' => auth()->id(),
-                'room_id' => $room->id,
-                'check_in_date' => $bookingData['check_in'],
-                'check_out_date' => $bookingData['check_out'],
-                'guests_count' => $bookingData['guests'],
-                'total_amount' => $totalAmount,
+                'user_id' => $user->id,
+                'room_id' => $roomId,
+                'guest_name' => session('booking.guest_name', $user->name),
+                'guest_email' => session('booking.guest_email', $user->email),
+                'guest_phone' => session('booking.guest_phone', $user->phone),
+                'check_in_date' => session('booking.check_in'),
+                'check_out_date' => session('booking.check_out'),
+                'guests_count' => session('booking.guests'),
+                'total_amount' => session('booking.total_amount'),
                 'status' => 'confirmed',
-                'special_requests' => 'Demo booking from payment processor',
+                'special_requests' => session('booking.special_requests'),
                 'booking_source' => 'website',
             ]);
 
             // Create payment record
             $payment = Payment::create([
                 'booking_id' => $booking->id,
-                'payment_method' => $bookingData['payment_method'],
-                'amount' => $totalAmount,
+                'payment_method' => session('booking.payment_method'),
+                'amount' => session('booking.total_amount'),
                 'currency' => 'MYR',
                 'transaction_id' => 'TXN-' . strtoupper(Str::random(10)),
                 'payment_status' => 'completed',
@@ -105,12 +94,10 @@ class PaymentController extends Controller
             // Update room status to reserved (since booking is confirmed)
             $room->update(['status' => 'reserved']);
 
-            // Store real booking data in session for the success page
+            // Update session data for success page
             session([
                 'booking.confirmation_number' => $booking->booking_reference,
                 'booking.transaction_id' => $payment->transaction_id,
-                'booking.room_type' => $room->roomType->name ?? $bookingData['room_type'],
-                'booking.total' => 'RM ' . number_format($totalAmount, 2),
                 'booking.booking_id' => $booking->id,
             ]);
 

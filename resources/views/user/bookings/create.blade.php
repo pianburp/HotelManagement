@@ -8,7 +8,7 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <form method="POST" action="{{ route('user.payments.demo') }}" class="p-6">
+                <form method="POST" action="{{ route('user.bookings.store') }}" class="p-6">
                     @csrf
                     <input type="hidden" name="room_id" value="{{ $room->id }}">
 
@@ -203,6 +203,9 @@
             const taxRate = 0.10; // 10% tax rate
             const roomId = {{ $room->id }};
             
+            // Debounce function to limit API calls
+            let availabilityCheckTimeout;
+            
             // Create availability error container
             const availabilityError = document.createElement('div');
             availabilityError.id = 'availability-error';
@@ -215,6 +218,15 @@
                 
                 // Sync values with waitlist form
                 syncWaitlistFormValues();
+                
+                // Reset to defaults if no valid dates
+                if (!checkInInput.value || !checkOutInput.value) {
+                    if (nightsSpan) nightsSpan.textContent = '1';
+                    if (subtotalSpan) subtotalSpan.textContent = formatMoney(basePrice);
+                    if (taxesSpan) taxesSpan.textContent = formatMoney(basePrice * taxRate);
+                    if (totalSpan) totalSpan.textContent = formatMoney(basePrice * (1 + taxRate));
+                    return;
+                }
                 
                 // Validate date order
                 if (checkOut <= checkIn) {
@@ -230,25 +242,45 @@
                 // Clear error state
                 if (checkoutError) checkoutError.classList.add('hidden');
                 
-                if (checkIn && checkOut && checkOut > checkIn) {
-                    const timeDiff = checkOut.getTime() - checkIn.getTime();
-                    const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
-                    const subtotal = basePrice * nights;
-                    const taxes = subtotal * taxRate;
-                    const total = subtotal + taxes;
-                    
-                    if (nightsSpan) nightsSpan.textContent = nights;
-                    if (subtotalSpan) subtotalSpan.textContent = formatMoney(subtotal);
-                    if (taxesSpan) taxesSpan.textContent = formatMoney(taxes);
-                    if (totalSpan) totalSpan.textContent = formatMoney(total);
-                    
-                    // Check availability with server
-                    checkAvailability(checkInInput.value, checkOutInput.value);
+                // Calculate prices
+                const timeDiff = checkOut.getTime() - checkIn.getTime();
+                const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                const subtotal = basePrice * nights;
+                const taxes = subtotal * taxRate;
+                const total = subtotal + taxes;
+                
+                // Update display with animation
+                if (nightsSpan) {
+                    nightsSpan.style.transition = 'all 0.3s ease';
+                    nightsSpan.textContent = nights;
+                }
+                if (subtotalSpan) {
+                    subtotalSpan.style.transition = 'all 0.3s ease';
+                    subtotalSpan.textContent = formatMoney(subtotal);
+                }
+                if (taxesSpan) {
+                    taxesSpan.style.transition = 'all 0.3s ease';
+                    taxesSpan.textContent = formatMoney(taxes);
+                }
+                if (totalSpan) {
+                    totalSpan.style.transition = 'all 0.3s ease';
+                    totalSpan.textContent = formatMoney(total);
+                    // Briefly highlight the total amount
+                    totalSpan.style.transform = 'scale(1.05)';
+                    setTimeout(() => {
+                        totalSpan.style.transform = 'scale(1)';
+                    }, 200);
+                }
+                
+                // Check availability with server only if we have valid dates
+                if (nights > 0) {
+                    // Debounce the availability check to avoid too many API calls
+                    clearTimeout(availabilityCheckTimeout);
+                    availabilityCheckTimeout = setTimeout(() => {
+                        checkAvailability(checkInInput.value, checkOutInput.value);
+                    }, 300); // Wait 300ms before checking
                 } else {
-                    if (nightsSpan) nightsSpan.textContent = '0';
-                    if (subtotalSpan) subtotalSpan.textContent = formatMoney(0);
-                    if (taxesSpan) taxesSpan.textContent = formatMoney(0);
-                    if (totalSpan) totalSpan.textContent = formatMoney(0);
+                    enableSubmitButton();
                 }
             }
 
@@ -304,6 +336,7 @@
                     
                     if (data.available) {
                         availabilityError.classList.add('hidden');
+                        document.getElementById('waitlist-container').classList.add('hidden');
                         enableSubmitButton();
                     } else {
                         let errorMessage = 'Selected dates are not available.';
@@ -323,9 +356,6 @@
                         
                         // Make sure the waitlist form has the latest values
                         syncWaitlistFormValues();
-                    } else {
-                        // Hide waitlist option when room is available
-                        document.getElementById('waitlist-container').classList.add('hidden');
                     }
                 } catch (error) {
                     console.error('Error checking availability:', error);
@@ -374,12 +404,26 @@
                 syncWaitlistFormValues();
             });
             
+            checkInInput.addEventListener('input', function() {
+                updateCheckoutMinDate();
+                calculateTotal();
+            });
+            
             checkOutInput.addEventListener('change', function() {
                 calculateTotal();
                 syncWaitlistFormValues();
             });
             
+            checkOutInput.addEventListener('input', function() {
+                calculateTotal();
+            });
+            
             guestsInput.addEventListener('change', syncWaitlistFormValues);
+
+            // Initial calculation on page load
+            if (checkInInput.value && checkOutInput.value) {
+                calculateTotal();
+            }
 
             // Prevent form submission with invalid dates or unavailable rooms
             if (form) {
@@ -418,14 +462,6 @@
                     // Additional validation could be added here
                 });
             }
-            
-            // Make sure to sync the waitlist form initially
-            document.addEventListener('DOMContentLoaded', function() {
-                syncWaitlistFormValues();
-                
-                // Calculate on page load if dates are present
-                calculateTotal();
-            });
         });
     </script>
 </x-app-layout>

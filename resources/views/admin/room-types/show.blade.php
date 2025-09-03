@@ -104,35 +104,6 @@
                             @endif
                         </div>
                     </div>
-
-                    <!-- Translations -->
-                    @if($roomType->translations->count() > 0)
-                        <div class="mt-6 bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6">
-                                <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('Translations') }}</h3>
-                                
-                                <div class="space-y-4">
-                                    @foreach($roomType->translations as $translation)
-                                        <div class="border border-gray-200 rounded-lg p-4">
-                                            <div class="flex items-center justify-between mb-2">
-                                                <h4 class="font-medium text-gray-700">
-                                                    {{ strtoupper($translation->locale) }} - {{ $translation->name }}
-                                                </h4>
-                                            </div>
-                                            
-                                            @if($translation->description)
-                                                <p class="text-sm text-gray-600 mb-2">{{ $translation->description }}</p>
-                                            @endif
-                                            
-                                            @if($translation->size)
-                                                <p class="text-xs text-gray-500">{{ __('Size') }}: {{ $translation->size }}</p>
-                                            @endif
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    @endif
                 </div>
 
                 <!-- Sidebar -->

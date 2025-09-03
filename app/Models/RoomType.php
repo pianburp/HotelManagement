@@ -77,35 +77,6 @@ class RoomType extends Model implements HasMedia
     }
 
     /**
-     * For backwards compatibility - gets translations via relationship if needed
-     * This allows us to transition smoothly to the Translatable trait
-     */
-    public function translations()
-    {
-        return $this->hasMany(RoomTypeTranslation::class);
-    }
-    
-    /**
-     * Override setTranslation method to update both the Spatie JSON field
-     * and the traditional translation records for backwards compatibility
-     */
-    public function setTranslation($key, $locale, $value)
-    {
-        // Use the parent setTranslation method from Spatie Translatable
-        parent::setTranslation($key, $locale, $value);
-        
-        // Also update the old translation model if it exists
-        if (in_array($key, ['name', 'description', 'size', 'amenities_description'])) {
-            $this->translations()->updateOrCreate(
-                ['locale' => $locale],
-                [$key => $value]
-            );
-        }
-        
-        return $this;
-    }
-
-    /**
      * Register media collections for room type images
      */
     public function registerMediaCollections(): void

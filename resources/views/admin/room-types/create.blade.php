@@ -83,6 +83,32 @@
 
                             <!-- Right Column -->
                             <div class="space-y-6">
+                                <!-- Name -->
+                                <div>
+                                    <x-input-label for="name" :value="__('Name')" />
+                                    <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" 
+                                                :value="old('name')" required />
+                                    <x-input-error :messages="$errors->get('name')" class="mt-2" />
+                                </div>
+
+                                <!-- Description -->
+                                <div>
+                                    <x-input-label for="description" :value="__('Description')" />
+                                    <textarea id="description" name="description" rows="4" 
+                                            class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" 
+                                            required>{{ old('description') }}</textarea>
+                                    <x-input-error :messages="$errors->get('description')" class="mt-2" />
+                                </div>
+
+                                <!-- Size -->
+                                <div>
+                                    <x-input-label for="size" :value="__('Size')" />
+                                    <x-text-input id="size" class="block mt-1 w-full" type="text" name="size" 
+                                                :value="old('size')" 
+                                                placeholder="{{ __('e.g., 25 sqm') }}" />
+                                    <x-input-error :messages="$errors->get('size')" class="mt-2" />
+                                </div>
+
                                 <!-- Amenities -->
                                 <div>
                                     <x-input-label for="amenities" :value="__('Amenities')" />
@@ -114,51 +140,16 @@
                                     </button>
                                     <x-input-error :messages="$errors->get('amenities')" class="mt-2" />
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Translations Section -->
-                        <div class="mt-8 border-t pt-6">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('Translations') }}</h3>
-                            
-                            @foreach(config('app.available_locales', ['en']) as $locale)
-                                <div class="mb-6 p-4 border border-gray-200 rounded-lg">
-                                    <h4 class="font-medium text-gray-700 mb-3">
-                                        {{ __(':language Translation', ['language' => strtoupper($locale)]) }}
-                                    </h4>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <!-- Name -->
-                                        <div>
-                                            <x-input-label for="translations_{{ $locale }}_name" :value="__('Name')" />
-                                            <x-text-input id="translations_{{ $locale }}_name" class="block mt-1 w-full" 
-                                                        type="text" name="translations[{{ $locale }}][name]" 
-                                                        :value="old('translations.'.$locale.'.name')" />
-                                            <x-input-error :messages="$errors->get('translations.'.$locale.'.name')" class="mt-2" />
-                                        </div>
-
-                                        <!-- Size -->
-                                        <div>
-                                            <x-input-label for="translations_{{ $locale }}_size" :value="__('Size')" />
-                                            <x-text-input id="translations_{{ $locale }}_size" class="block mt-1 w-full" 
-                                                        type="text" name="translations[{{ $locale }}][size]" 
-                                                        :value="old('translations.'.$locale.'.size')" 
-                                                        placeholder="{{ __('e.g., 25 sqm') }}" />
-                                            <x-input-error :messages="$errors->get('translations.'.$locale.'.size')" class="mt-2" />
-                                        </div>
-                                    </div>
-
-                                    <!-- Description -->
-                                    <div class="mt-4">
-                                        <x-input-label for="translations_{{ $locale }}_description" :value="__('Description')" />
-                                        <textarea id="translations_{{ $locale }}_description" 
-                                                name="translations[{{ $locale }}][description]" 
-                                                rows="4" 
-                                                class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('translations.'.$locale.'.description') }}</textarea>
-                                        <x-input-error :messages="$errors->get('translations.'.$locale.'.description')" class="mt-2" />
-                                    </div>
+                                <!-- Amenities Description -->
+                                <div>
+                                    <x-input-label for="amenities_description" :value="__('Amenities Description')" />
+                                    <textarea id="amenities_description" name="amenities_description" rows="3" 
+                                            class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" 
+                                            placeholder="{{ __('Additional description about amenities...') }}">{{ old('amenities_description') }}</textarea>
+                                    <x-input-error :messages="$errors->get('amenities_description')" class="mt-2" />
                                 </div>
-                            @endforeach
+                            </div>
                         </div>
 
                         <!-- Submit Button -->

@@ -17,16 +17,18 @@
                                 <div>
                                     <h4 class="font-medium mb-2">{{ __('Booking Details') }}</h4>
                                     <p class="text-sm text-gray-600">{{ __('Room Type') }}: {{ session('booking.room_type', 'Deluxe Suite') }}</p>
-                                    <p class="text-sm text-gray-600">{{ __('Check-in') }}: {{ session('booking.check_in', date('Y-m-d')) }}</p>
-                                    <p class="text-sm text-gray-600">{{ __('Check-out') }}: {{ session('booking.check_out', date('Y-m-d', strtotime('+3 days'))) }}</p>
+                                    <p class="text-sm text-gray-600">{{ __('Room Number') }}: {{ session('booking.room_number', 'N/A') }}</p>
+                                    <p class="text-sm text-gray-600">{{ __('Check-in') }}: {{ session('booking.check_in') ? \Carbon\Carbon::parse(session('booking.check_in'))->format('M d, Y') : date('M d, Y') }}</p>
+                                    <p class="text-sm text-gray-600">{{ __('Check-out') }}: {{ session('booking.check_out') ? \Carbon\Carbon::parse(session('booking.check_out'))->format('M d, Y') : date('M d, Y', strtotime('+3 days')) }}</p>
                                     <p class="text-sm text-gray-600">{{ __('Guests') }}: {{ session('booking.guests', '2') }}</p>
+                                    <p class="text-sm text-gray-600">{{ __('Nights') }}: {{ session('booking.nights', '3') }}</p>
                                 </div>
                                 <div>
                                     <h4 class="font-medium mb-2">{{ __('Payment Details') }}</h4>
-                                    <p class="text-sm text-gray-600">{{ __('Subtotal') }}: {{ session('booking.subtotal', 'RM 600.00') }}</p>
-                                    <p class="text-sm text-gray-600">{{ __('Taxes & Fees') }}: {{ session('booking.taxes', 'RM 60.00') }}</p>
+                                    <p class="text-sm text-gray-600">{{ __('Subtotal') }}: RM{{ number_format(session('booking.subtotal', 600), 2) }}</p>
+                                    <p class="text-sm text-gray-600">{{ __('Taxes & Fees') }}: RM{{ number_format(session('booking.taxes', 60), 2) }}</p>
                                     <p class="text-lg font-bold text-green-600">{{ __('Total') }}: {{ session('booking.total', 'RM 660.00') }}</p>
-                                    <p class="text-sm text-gray-600 mt-2">{{ __('Payment Method') }}: {{ session('booking.payment_method', 'Credit Card') }}</p>
+                                    <p class="text-sm text-gray-600 mt-2">{{ __('Payment Method') }}: {{ __(ucfirst(str_replace('_', ' ', session('booking.payment_method', 'credit_card')))) }}</p>
                                 </div>
                             </div>
                         </div>

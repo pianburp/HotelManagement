@@ -33,8 +33,7 @@ class RoomTypeController extends Controller
      */
     public function create()
     {
-        $locales = config('app.available_locales');
-        return view('admin.room-types.create', compact('locales'));
+        return view('admin.room-types.create');
     }
 
     /**
@@ -46,14 +45,13 @@ class RoomTypeController extends Controller
             'code' => 'required|string|max:20|unique:room_types',
             'base_price' => 'required|numeric|min:0',
             'max_occupancy' => 'required|integer|min:1',
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'size' => 'nullable|string|max:100',
+            'amenities_description' => 'nullable|string',
             'amenities' => 'nullable|array',
             'amenities.*' => 'nullable|string|max:255',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
-            'translations' => 'required|array',
-            'translations.*' => 'required|array',
-            'translations.*.name' => 'required|string|max:255',
-            'translations.*.description' => 'required|string',
-            'translations.*.size' => 'nullable|string|max:100',
         ]);
 
         DB::beginTransaction();
@@ -64,19 +62,11 @@ class RoomTypeController extends Controller
                 'max_occupancy' => $request->max_occupancy,
                 'amenities' => array_filter($request->amenities ?? []), // Remove empty values
                 'is_active' => true,
+                'name' => $request->name,
+                'description' => $request->description,
+                'size' => $request->size,
+                'amenities_description' => $request->amenities_description,
             ]);
-
-            // Store translations using Spatie Translatable
-            foreach ($request->translations as $locale => $translation) {
-                $roomType->setTranslation('name', $locale, $translation['name']);
-                $roomType->setTranslation('description', $locale, $translation['description']);
-                if (isset($translation['size'])) {
-                    $roomType->setTranslation('size', $locale, $translation['size']);
-                }
-                if (isset($translation['amenities_description'])) {
-                    $roomType->setTranslation('amenities_description', $locale, $translation['amenities_description']);
-                }
-            }
             
             $roomType->save();
 
@@ -122,8 +112,7 @@ class RoomTypeController extends Controller
     public function edit(RoomType $roomType)
     {
         $roomType->load(['media']);
-        $locales = config('app.available_locales');
-        return view('admin.room-types.edit', compact('roomType', 'locales'));
+        return view('admin.room-types.edit', compact('roomType'));
     }
 
     /**
@@ -136,14 +125,13 @@ class RoomTypeController extends Controller
             'base_price' => 'required|numeric|min:0',
             'max_occupancy' => 'required|integer|min:1',
             'is_active' => 'required|boolean',
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'size' => 'nullable|string|max:100',
+            'amenities_description' => 'nullable|string',
             'amenities' => 'nullable|array',
             'amenities.*' => 'nullable|string|max:255',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
-            'translations' => 'required|array',
-            'translations.*' => 'required|array',
-            'translations.*.name' => 'required|string|max:255',
-            'translations.*.description' => 'required|string',
-            'translations.*.size' => 'nullable|string|max:100',
             'remove_images' => 'nullable|array',
             'remove_images.*' => 'integer|exists:media,id',
         ]);
@@ -155,18 +143,12 @@ class RoomTypeController extends Controller
             $roomType->max_occupancy = $request->max_occupancy;
             $roomType->amenities = array_filter($request->amenities ?? []); // Remove empty values
             $roomType->is_active = (bool)$request->is_active;
-
-            // Update translations using Spatie Translatable
-            foreach ($request->translations as $locale => $translation) {
-                $roomType->setTranslation('name', $locale, $translation['name']);
-                $roomType->setTranslation('description', $locale, $translation['description']);
-                if (isset($translation['size'])) {
-                    $roomType->setTranslation('size', $locale, $translation['size']);
-                }
-                if (isset($translation['amenities_description'])) {
-                    $roomType->setTranslation('amenities_description', $locale, $translation['amenities_description']);
-                }
-            }
+            
+            // Update translatable fields directly
+            $roomType->name = $request->name;
+            $roomType->description = $request->description;
+            $roomType->size = $request->size;
+            $roomType->amenities_description = $request->amenities_description;
             
             $roomType->save();
 
