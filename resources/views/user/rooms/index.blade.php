@@ -59,7 +59,7 @@
                                     <option value="">{{ __('All Types') }}</option>
                                     @foreach($roomTypes as $type)
                                         <option value="{{ $type->id }}" {{ request('room_type') == $type->id ? 'selected' : '' }}>
-                                            {{ $type->name }}
+                                            {{ $type->getTranslation('name', app()->getLocale()) }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -120,7 +120,7 @@
                             </div>
                         </div>
                         <div class="p-6">
-                            <h3 class="text-xl font-semibold mb-2">{{ $room->roomType->name }} - {{ __('Room') }} {{ $room->room_number }}</h3>
+                            <h3 class="text-xl font-semibold mb-2">{{ $room->roomType->getTranslation('name', app()->getLocale()) }} - {{ __('Room') }} {{ $room->room_number }}</h3>
                             
                             <!-- Room Details -->
                             <div class="grid grid-cols-2 gap-2 mb-4 text-sm">
@@ -142,7 +142,7 @@
                                 </div>
                             </div>
 
-                            <p class="text-gray-600 mb-4 line-clamp-2">{{ Str::limit($room->roomType->description, 100) }}</p>
+                            <p class="text-gray-600 mb-4 line-clamp-2">{{ Str::limit($room->roomType->getTranslation('description', app()->getLocale()), 100) }}</p>
                             
                             <!-- Amenities -->
                             @if($room->roomType->amenities && count($room->roomType->amenities) > 0)

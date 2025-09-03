@@ -21,7 +21,7 @@ class RoomTypeController extends Controller
      */
     public function index()
     {
-        $roomTypes = RoomType::with(['translations', 'media'])
+        $roomTypes = RoomType::with(['media'])
             ->withCount(['rooms'])
             ->paginate(10);
 
@@ -58,7 +58,7 @@ class RoomTypeController extends Controller
 
         DB::beginTransaction();
         try {
-            $roomType = RoomType::create([
+            $roomType = new RoomType([
                 'code' => $request->code,
                 'base_price' => $request->base_price,
                 'max_occupancy' => $request->max_occupancy,
@@ -66,15 +66,19 @@ class RoomTypeController extends Controller
                 'is_active' => true,
             ]);
 
-            // Store translations
+            // Store translations using Spatie Translatable
             foreach ($request->translations as $locale => $translation) {
-                $roomType->translations()->create([
-                    'locale' => $locale,
-                    'name' => $translation['name'],
-                    'description' => $translation['description'],
-                    'size' => $translation['size'] ?? null,
-                ]);
+                $roomType->setTranslation('name', $locale, $translation['name']);
+                $roomType->setTranslation('description', $locale, $translation['description']);
+                if (isset($translation['size'])) {
+                    $roomType->setTranslation('size', $locale, $translation['size']);
+                }
+                if (isset($translation['amenities_description'])) {
+                    $roomType->setTranslation('amenities_description', $locale, $translation['amenities_description']);
+                }
             }
+            
+            $roomType->save();
 
             // Handle image uploads
             if ($request->hasFile('images')) {
@@ -100,7 +104,7 @@ class RoomTypeController extends Controller
      */
     public function show(RoomType $roomType)
     {
-        $roomType->load(['translations', 'media', 'rooms.bookings']);
+        $roomType->load(['media', 'rooms.bookings']);
         
         // Get room statistics
         $roomType->rooms_count = $roomType->rooms()->count();
@@ -117,7 +121,7 @@ class RoomTypeController extends Controller
      */
     public function edit(RoomType $roomType)
     {
-        $roomType->load(['translations', 'media']);
+        $roomType->load(['media']);
         $locales = config('app.available_locales');
         return view('admin.room-types.edit', compact('roomType', 'locales'));
     }
@@ -146,25 +150,25 @@ class RoomTypeController extends Controller
 
         DB::beginTransaction();
         try {
-            $roomType->update([
-                'code' => $request->code,
-                'base_price' => $request->base_price,
-                'max_occupancy' => $request->max_occupancy,
-                'amenities' => array_filter($request->amenities ?? []), // Remove empty values
-                'is_active' => (bool)$request->is_active,
-            ]);
+            $roomType->code = $request->code;
+            $roomType->base_price = $request->base_price;
+            $roomType->max_occupancy = $request->max_occupancy;
+            $roomType->amenities = array_filter($request->amenities ?? []); // Remove empty values
+            $roomType->is_active = (bool)$request->is_active;
 
-            // Update translations
+            // Update translations using Spatie Translatable
             foreach ($request->translations as $locale => $translation) {
-                $roomType->translations()->updateOrCreate(
-                    ['locale' => $locale],
-                    [
-                        'name' => $translation['name'],
-                        'description' => $translation['description'],
-                        'size' => $translation['size'] ?? null,
-                    ]
-                );
+                $roomType->setTranslation('name', $locale, $translation['name']);
+                $roomType->setTranslation('description', $locale, $translation['description']);
+                if (isset($translation['size'])) {
+                    $roomType->setTranslation('size', $locale, $translation['size']);
+                }
+                if (isset($translation['amenities_description'])) {
+                    $roomType->setTranslation('amenities_description', $locale, $translation['amenities_description']);
+                }
             }
+            
+            $roomType->save();
 
             // Remove selected images
             if ($request->has('remove_images') && is_array($request->remove_images)) {

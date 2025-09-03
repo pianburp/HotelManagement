@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
 use App\Models\RoomType;
+use App\Services\RoomAvailabilityCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,8 @@ class RoomController extends Controller
      */
     public function index(Request $request)
     {
+        $cacheService = app(RoomAvailabilityCacheService::class);
+        
         $query = Room::with(['roomType.translations', 'currentBooking.user', 'upcomingBooking']);
 
         // Apply filters
@@ -62,17 +65,22 @@ class RoomController extends Controller
 
         $rooms = $query->paginate(15);
 
-        // Get statistics
-        $stats = [
-            'total' => Room::count(),
-            'available' => Room::where('status', 'available')->count(),
-            'reserved' => Room::where('status', 'reserved')->count(),
-            'onboard' => Room::where('status', 'onboard')->count(),
-            'closed' => Room::where('status', 'closed')->count(),
-        ];
+        // Get statistics from cache or database
+        $stats = $cacheService->getRoomStats();
+        if ($stats === null) {
+            $stats = [
+                'total' => Room::count(),
+                'available' => Room::where('status', 'available')->count(),
+                'reserved' => Room::where('status', 'reserved')->count(),
+                'onboard' => Room::where('status', 'onboard')->count(),
+                'closed' => Room::where('status', 'closed')->count(),
+            ];
+            $cacheService->cacheRoomStats($stats);
+        }
 
-        $roomTypes = RoomType::with('translations')->get();
-        $floors = Room::distinct('floor_number')->orderBy('floor_number')->pluck('floor_number');
+        $roomTypes = $this->getCachedRoomTypes();
+        
+        $floors = $this->getCachedFloors();
 
         return view('admin.rooms.index', compact('rooms', 'stats', 'roomTypes', 'floors'));
     }
@@ -140,7 +148,15 @@ class RoomController extends Controller
      */
     public function show(Room $room)
     {
-        $room->load(['roomType.translations', 'statusHistory.changedBy']);
+        $room->load([
+            'roomType.translations', 
+            'statusHistory.changedBy',
+            'currentBooking.user',
+            'upcomingBooking.user',
+            'bookings' => function($query) {
+                $query->orderBy('check_in_date', 'desc')->limit(10);
+            }
+        ]);
         return view('admin.rooms.show', compact('room'));
     }
 
@@ -303,6 +319,52 @@ class RoomController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Error updating room statuses: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Get cached room types with fallback for non-tagging cache stores
+     */
+    private function getCachedRoomTypes()
+    {
+        $supportsTagging = $this->supportsTagging();
+        
+        if ($supportsTagging) {
+            return Cache::tags(['room_types'])->remember('room_types_with_translations', 3600, function () {
+                return RoomType::with('translations')->get();
+            });
+        } else {
+            return Cache::remember('room_types_with_translations', 3600, function () {
+                return RoomType::with('translations')->get();
+            });
+        }
+    }
+
+    /**
+     * Get cached floors with fallback for non-tagging cache stores
+     */
+    private function getCachedFloors()
+    {
+        $supportsTagging = $this->supportsTagging();
+        
+        if ($supportsTagging) {
+            return Cache::tags(['rooms'])->remember('distinct_floors', 3600, function () {
+                return Room::distinct('floor_number')->orderBy('floor_number')->pluck('floor_number');
+            });
+        } else {
+            return Cache::remember('distinct_floors', 3600, function () {
+                return Room::distinct('floor_number')->orderBy('floor_number')->pluck('floor_number');
+            });
+        }
+    }
+
+    /**
+     * Check if the current cache driver supports tagging
+     */
+    private function supportsTagging(): bool
+    {
+        $driver = config('cache.default');
+        $supportedDrivers = ['redis', 'memcached'];
+        return in_array($driver, $supportedDrivers);
     }
 
 }

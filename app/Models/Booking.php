@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RoomAvailabilityCacheService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,6 +33,29 @@ class Booking extends Model
         'check_out_date' => 'date',
         'total_amount' => 'decimal:2',
     ];
+
+    protected static function booted()
+    {
+        // Invalidate cache when booking status changes
+        static::updated(function ($booking) {
+            if ($booking->isDirty(['status', 'check_in_date', 'check_out_date', 'room_id'])) {
+                app(RoomAvailabilityCacheService::class)->invalidateRoomCache($booking->room_id);
+                
+                // If room_id changed, also invalidate the old room
+                if ($booking->isDirty('room_id') && $booking->getOriginal('room_id')) {
+                    app(RoomAvailabilityCacheService::class)->invalidateRoomCache($booking->getOriginal('room_id'));
+                }
+            }
+        });
+
+        static::created(function ($booking) {
+            app(RoomAvailabilityCacheService::class)->invalidateRoomCache($booking->room_id);
+        });
+
+        static::deleted(function ($booking) {
+            app(RoomAvailabilityCacheService::class)->invalidateRoomCache($booking->room_id);
+        });
+    }
 
     /**
      * Accessor for check_in to maintain compatibility

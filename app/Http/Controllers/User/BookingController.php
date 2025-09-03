@@ -7,8 +7,10 @@ use App\Http\Requests\BookingRequest;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\RoomType;
+use App\Services\RoomAvailabilityCacheService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class BookingController extends Controller
 {
@@ -17,6 +19,11 @@ class BookingController extends Controller
      */
     public function index()
     {
+        $cacheService = app(RoomAvailabilityCacheService::class);
+        
+        // Try to get cached room stats first
+        $cachedStats = $cacheService->getRoomStats();
+        
         $rooms = Room::with(['roomType.translations'])
             ->whereHas('roomType')
             ->where('status', 'available') // Only show available rooms
@@ -24,13 +31,12 @@ class BookingController extends Controller
             ->orderBy('room_number') // Then by room number
             ->paginate(9);
 
-        $roomTypes = RoomType::with('translations')->get();
+        $roomTypes = $this->getCachedRoomTypes();
+        
         $amenities = config('hotel.amenities', []);
 
-        // Get price range from available room types
-        $priceRange = RoomType::where('is_active', true)
-            ->selectRaw('MIN(base_price) as min_price, MAX(base_price) as max_price')
-            ->first();
+        // Get price range from available room types (cached)
+        $priceRange = $this->getCachedPriceRange();
         
         $minPrice = $priceRange->min_price ?? 0;
         $maxPrice = $priceRange->max_price ?? 1000;
@@ -196,7 +202,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Search for available rooms based on criteria
+     * Search for available rooms based on criteria with Redis caching
      */
     public function search(Request $request)
     {
@@ -212,84 +218,121 @@ class BookingController extends Controller
             'amenities.*' => 'string|in:' . implode(',', config('hotel.amenities')),
         ]);
 
-        $query = Room::with(['roomType.translations', 'roomType.media'])
-            ->whereHas('roomType');
-
-        // Filter by room type
-        if ($request->filled('room_type')) {
-            $query->where('room_type_id', $request->room_type);
-        }
-
-        // Filter by occupancy
-        if ($request->filled('occupancy')) {
-            $query->whereHas('roomType', function ($q) use ($request) {
-                $q->where('max_occupancy', '>=', $request->occupancy);
-            });
-        }
-
-        // Filter by price range
-        if ($request->filled('price_min')) {
-            $query->whereHas('roomType', function ($q) use ($request) {
-                $q->where('base_price', '>=', $request->price_min);
-            });
-        }
-        if ($request->filled('price_max')) {
-            $query->whereHas('roomType', function ($q) use ($request) {
-                $q->where('base_price', '<=', $request->price_max);
-            });
-        }
-
-        // Filter by amenities (room must have ALL selected amenities)
-        if ($request->filled('amenities')) {
-            $selectedAmenities = $request->amenities;
-            $query->whereHas('roomType', function ($q) use ($selectedAmenities) {
-                foreach ($selectedAmenities as $amenity) {
-                    $q->whereJsonContains('amenities', $amenity);
-                }
-            });
-        }
-
-        // Filter by date range and availability
-        if ($request->filled(['check_in', 'check_out'])) {
-            $checkIn = $request->check_in;
-            $checkOut = $request->check_out;
-            
-            // Only show rooms that are actually available and don't have conflicting bookings
-            $query->where('status', 'available')
-                ->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
-                    $q->where(function ($q) use ($checkIn, $checkOut) {
-                        // Check for any overlap in booking dates
-                        $q->where(function ($overlap) use ($checkIn, $checkOut) {
-                            // Case 1: Existing booking starts during our stay
-                            $overlap->whereBetween('check_in_date', [$checkIn, $checkOut])
-                                // Case 2: Existing booking ends during our stay  
-                                ->orWhereBetween('check_out_date', [$checkIn, $checkOut])
-                                // Case 3: Our stay is completely within existing booking
-                                ->orWhere(function ($within) use ($checkIn, $checkOut) {
-                                    $within->where('check_in_date', '<=', $checkIn)
-                                           ->where('check_out_date', '>=', $checkOut);
-                                })
-                                // Case 4: Existing booking is completely within our stay
-                                ->orWhere(function ($contains) use ($checkIn, $checkOut) {
-                                    $contains->where('check_in_date', '>=', $checkIn)
-                                            ->where('check_out_date', '<=', $checkOut);
-                                });
-                        });
-                    })->whereIn('status', ['confirmed', 'checked_in', 'pending']);
-                });
+        $cacheService = app(RoomAvailabilityCacheService::class);
+        
+        // Create search parameters for caching
+        $searchParams = $request->only([
+            'check_in', 'check_out', 'occupancy', 'price_min', 
+            'price_max', 'room_type', 'amenities'
+        ]);
+        
+        // Try to get cached search results
+        $cachedResults = $cacheService->getSearchResults($searchParams);
+        if ($cachedResults !== null) {
+            $rooms = Room::with(['roomType.translations', 'roomType.media'])
+                ->whereIn('id', $cachedResults)
+                ->paginate(9)
+                ->withQueryString();
         } else {
-            // If no dates specified, only show available rooms
-            $query->where('status', 'available');
+            // Perform the search
+            $query = Room::with(['roomType.translations', 'roomType.media'])
+                ->whereHas('roomType');
+
+            // Filter by room type
+            if ($request->filled('room_type')) {
+                $query->where('room_type_id', $request->room_type);
+            }
+
+            // Filter by occupancy
+            if ($request->filled('occupancy')) {
+                $query->whereHas('roomType', function ($q) use ($request) {
+                    $q->where('max_occupancy', '>=', $request->occupancy);
+                });
+            }
+
+            // Filter by price range
+            if ($request->filled('price_min')) {
+                $query->whereHas('roomType', function ($q) use ($request) {
+                    $q->where('base_price', '>=', $request->price_min);
+                });
+            }
+            if ($request->filled('price_max')) {
+                $query->whereHas('roomType', function ($q) use ($request) {
+                    $q->where('base_price', '<=', $request->price_max);
+                });
+            }
+
+            // Filter by amenities (room must have ALL selected amenities)
+            if ($request->filled('amenities')) {
+                $selectedAmenities = $request->amenities;
+                $query->whereHas('roomType', function ($q) use ($selectedAmenities) {
+                    foreach ($selectedAmenities as $amenity) {
+                        $q->whereJsonContains('amenities', $amenity);
+                    }
+                });
+            }
+
+            // Filter by date range and availability
+            if ($request->filled(['check_in', 'check_out'])) {
+                $checkIn = $request->check_in;
+                $checkOut = $request->check_out;
+                
+                // Use cached availability if possible
+                $availableRoomIds = $cacheService->getAvailableRoomsForDateRange(
+                    $checkIn, 
+                    $checkOut, 
+                    $searchParams
+                );
+                
+                if ($availableRoomIds !== null) {
+                    $query->whereIn('id', $availableRoomIds);
+                } else {
+                    // Only show rooms that are actually available and don't have conflicting bookings
+                    $query->where('status', 'available')
+                        ->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
+                            $q->where(function ($q) use ($checkIn, $checkOut) {
+                                // Check for any overlap in booking dates
+                                $q->where(function ($overlap) use ($checkIn, $checkOut) {
+                                    // Case 1: Existing booking starts during our stay
+                                    $overlap->whereBetween('check_in_date', [$checkIn, $checkOut])
+                                        // Case 2: Existing booking ends during our stay  
+                                        ->orWhereBetween('check_out_date', [$checkIn, $checkOut])
+                                        // Case 3: Our stay is completely within existing booking
+                                        ->orWhere(function ($within) use ($checkIn, $checkOut) {
+                                            $within->where('check_in_date', '<=', $checkIn)
+                                                   ->where('check_out_date', '>=', $checkOut);
+                                        })
+                                        // Case 4: Existing booking is completely within our stay
+                                        ->orWhere(function ($contains) use ($checkIn, $checkOut) {
+                                            $contains->where('check_in_date', '>=', $checkIn)
+                                                    ->where('check_out_date', '<=', $checkOut);
+                                        });
+                                });
+                            })->whereIn('status', ['confirmed', 'checked_in', 'pending']);
+                        });
+                        
+                    // Cache the available room IDs for this date range
+                    $availableRoomIds = $query->pluck('id')->toArray();
+                    $cacheService->cacheAvailableRoomsForDateRange($checkIn, $checkOut, $searchParams, $availableRoomIds);
+                }
+            } else {
+                // If no dates specified, only show available rooms
+                $query->where('status', 'available');
+            }
+
+            $rooms = $query->paginate(9)->withQueryString();
+            
+            // Cache the search results
+            $roomIds = $rooms->pluck('id')->toArray();
+            $cacheService->cacheSearchResults($searchParams, $roomIds);
         }
 
-        $rooms = $query->paginate(9)->withQueryString();
-        $roomTypes = RoomType::with('translations')->get();
+        $roomTypes = $this->getCachedRoomTypes();
+        
         $amenities = config('hotel.amenities', []);
 
-        // Get price range from available room types
-        $priceRange = RoomType::where('is_active', true)
-            ->selectRaw('MIN(base_price) as min_price, MAX(base_price) as max_price')
-            ->first();
+        // Get price range from available room types (cached)
+        $priceRange = $this->getCachedPriceRange();
         
         $minPrice = $priceRange->min_price ?? 0;
         $maxPrice = $priceRange->max_price ?? 1000;
@@ -323,5 +366,55 @@ class BookingController extends Controller
         } while (Booking::where('booking_reference', $reference)->exists());
 
         return $reference;
+    }
+
+    /**
+     * Get cached room types with fallback for non-tagging cache stores
+     */
+    private function getCachedRoomTypes()
+    {
+        $supportsTagging = $this->supportsTagging();
+        
+        if ($supportsTagging) {
+            return Cache::tags(['room_types'])->remember('room_types_active', 3600, function () {
+                return RoomType::with('translations')->where('is_active', true)->get();
+            });
+        } else {
+            return Cache::remember('room_types_active', 3600, function () {
+                return RoomType::with('translations')->where('is_active', true)->get();
+            });
+        }
+    }
+
+    /**
+     * Get cached price range with fallback for non-tagging cache stores
+     */
+    private function getCachedPriceRange()
+    {
+        $supportsTagging = $this->supportsTagging();
+        
+        if ($supportsTagging) {
+            return Cache::tags(['room_types'])->remember('price_range', 3600, function () {
+                return RoomType::where('is_active', true)
+                    ->selectRaw('MIN(base_price) as min_price, MAX(base_price) as max_price')
+                    ->first();
+            });
+        } else {
+            return Cache::remember('price_range', 3600, function () {
+                return RoomType::where('is_active', true)
+                    ->selectRaw('MIN(base_price) as min_price, MAX(base_price) as max_price')
+                    ->first();
+            });
+        }
+    }
+
+    /**
+     * Check if the current cache driver supports tagging
+     */
+    private function supportsTagging(): bool
+    {
+        $driver = config('cache.default');
+        $supportedDrivers = ['redis', 'memcached'];
+        return in_array($driver, $supportedDrivers);
     }
 }

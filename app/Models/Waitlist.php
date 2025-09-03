@@ -17,6 +17,13 @@ class Waitlist extends Model
         'check_out_date',
         'guests_count',
         'status',
+        'max_price',
+        'contact_name',
+        'contact_email',
+        'contact_phone',
+        'special_requests',
+        'notes',
+        'notify',
     ];
 
     protected $casts = [

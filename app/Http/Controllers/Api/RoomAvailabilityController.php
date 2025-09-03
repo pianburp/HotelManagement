@@ -4,15 +4,17 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
+use App\Services\RoomAvailabilityCacheService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class RoomAvailabilityController extends Controller
 {
     /**
-     * Get available dates for a specific room.
+     * Get available dates for a specific room with caching.
      */
     public function getAvailableDates(Request $request, Room $room): JsonResponse
     {
@@ -26,36 +28,23 @@ class RoomAvailabilityController extends Controller
         $months = $request->months ?? 3;
         $endDate = $request->end_date ? Carbon::parse($request->end_date) : $startDate->copy()->addMonths($months);
 
-        // Get all booked dates for this room
-        $bookedDates = $this->getBookedDates($room, $startDate, $endDate);
+        $cacheKey = "room_dates:{$room->id}:from:{$startDate->format('Y-m-d')}:to:{$endDate->format('Y-m-d')}";
         
-        // Get all dates in the range
-        $period = CarbonPeriod::create($startDate, $endDate);
-        $allDates = [];
+        $supportsTagging = $this->supportsTagging();
         
-        foreach ($period as $date) {
-            $dateString = $date->format('Y-m-d');
-            $allDates[] = [
-                'date' => $dateString,
-                'available' => !in_array($dateString, $bookedDates) && 
-                             $room->status === 'available' && 
-                             $date->isFuture(),
-                'day_name' => $date->format('l'),
-                'is_weekend' => $date->isWeekend(),
-            ];
+        if ($supportsTagging) {
+            $result = Cache::tags(['room_availability', "room:{$room->id}"])->remember($cacheKey, 1800, function () use ($room, $startDate, $endDate) {
+                return $this->generateAvailabilityData($room, $startDate, $endDate);
+            });
+        } else {
+            $result = Cache::remember($cacheKey, 1800, function () use ($room, $startDate, $endDate) {
+                return $this->generateAvailabilityData($room, $startDate, $endDate);
+            });
         }
 
-        return response()->json([
-            'room_id' => $room->id,
-            'room_number' => $room->room_number,
-            'room_type' => $room->roomType->name,
-            'dates' => $allDates,
-            'booked_periods' => $this->getBookedPeriods($room, $startDate, $endDate),
-        ]);
-    }
-
-    /**
-     * Check if specific dates are available for a room.
+        return response()->json($result);
+    }    /**
+     * Check if specific dates are available for a room with caching.
      */
     public function checkAvailability(Request $request, Room $room): JsonResponse
     {
@@ -67,7 +56,18 @@ class RoomAvailabilityController extends Controller
         $checkIn = Carbon::parse($request->check_in);
         $checkOut = Carbon::parse($request->check_out);
 
-        $isAvailable = $room->isAvailable($checkIn->format('Y-m-d'), $checkOut->format('Y-m-d'));
+        $cacheService = app(RoomAvailabilityCacheService::class);
+        
+        // Try to get from cache first
+        $isAvailable = $cacheService->getRoomAvailability(
+            $room->id, 
+            $checkIn->format('Y-m-d'), 
+            $checkOut->format('Y-m-d')
+        );
+        
+        if ($isAvailable === null) {
+            $isAvailable = $room->isAvailable($checkIn->format('Y-m-d'), $checkOut->format('Y-m-d'));
+        }
         
         $conflicts = [];
         if (!$isAvailable) {
@@ -82,6 +82,7 @@ class RoomAvailabilityController extends Controller
             'nights' => $checkIn->diffInDays($checkOut),
             'conflicts' => $conflicts,
             'room_status' => $room->status,
+            'cached' => $cacheService->getRoomAvailability($room->id, $checkIn->format('Y-m-d'), $checkOut->format('Y-m-d')) !== null
         ]);
     }
 
@@ -169,5 +170,48 @@ class RoomAvailabilityController extends Controller
                 'status' => $booking->status,
             ];
         })->toArray();
+    }
+
+    /**
+     * Generate availability data for caching
+     */
+    private function generateAvailabilityData(Room $room, Carbon $startDate, Carbon $endDate): array
+    {
+        // Get all booked dates for this room
+        $bookedDates = $this->getBookedDates($room, $startDate, $endDate);
+
+        // Get all dates in the range
+        $period = CarbonPeriod::create($startDate, $endDate);
+        $allDates = [];
+        
+        foreach ($period as $date) {
+            $dateString = $date->format('Y-m-d');
+            $allDates[] = [
+                'date' => $dateString,
+                'available' => !in_array($dateString, $bookedDates) && 
+                             $room->status === 'available' && 
+                             $date->isFuture(),
+                'day_name' => $date->format('l'),
+                'is_weekend' => $date->isWeekend(),
+            ];
+        }
+
+        return [
+            'room_id' => $room->id,
+            'room_number' => $room->room_number,
+            'room_type' => $room->roomType->name,
+            'dates' => $allDates,
+            'booked_periods' => $this->getBookedPeriods($room, $startDate, $endDate),
+        ];
+    }
+
+    /**
+     * Check if the current cache driver supports tagging
+     */
+    private function supportsTagging(): bool
+    {
+        $driver = config('cache.default');
+        $supportedDrivers = ['redis', 'memcached'];
+        return in_array($driver, $supportedDrivers);
     }
 }

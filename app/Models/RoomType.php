@@ -2,15 +2,24 @@
 
 namespace App\Models;
 
+use App\Services\RoomAvailabilityCacheService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\Translatable\HasTranslations;
 
 class RoomType extends Model implements HasMedia
 {
-    use HasFactory, InteractsWithMedia;
+    use HasFactory, InteractsWithMedia, HasTranslations;
+
+    public $translatable = [
+        'name',
+        'description',
+        'size',
+        'amenities_description',
+    ];
 
     protected $fillable = [
         'code',
@@ -18,6 +27,10 @@ class RoomType extends Model implements HasMedia
         'max_occupancy',
         'amenities',
         'is_active',
+        'name',
+        'description',
+        'size',
+        'amenities_description',
     ];
 
     protected $casts = [
@@ -26,12 +39,25 @@ class RoomType extends Model implements HasMedia
         'base_price' => 'decimal:2',
     ];
 
-    /**
-     * Get the translations for the room type.
-     */
-    public function translations(): HasMany
+    protected static function booted()
     {
-        return $this->hasMany(RoomTypeTranslation::class);
+        // Invalidate cache when room type changes
+        static::updated(function ($roomType) {
+            if (
+                $roomType->isDirty(['base_price', 'max_occupancy', 'amenities', 'is_active']) ||
+                collect($roomType->translatable)->some(fn($field) => $roomType->isDirty($field))
+            ) {
+                app(RoomAvailabilityCacheService::class)->invalidateAllRoomCache();
+            }
+        });
+
+        static::created(function () {
+            app(RoomAvailabilityCacheService::class)->invalidateAllRoomCache();
+        });
+
+        static::deleted(function () {
+            app(RoomAvailabilityCacheService::class)->invalidateAllRoomCache();
+        });
     }
 
     /**
@@ -51,60 +77,37 @@ class RoomType extends Model implements HasMedia
     }
 
     /**
-     * Get translation for specific locale.
+     * For backwards compatibility - gets translations via relationship if needed
+     * This allows us to transition smoothly to the Translatable trait
      */
-    public function getTranslation(?string $locale = null): ?RoomTypeTranslation
+    public function translations()
     {
-        $locale = $locale ?? app()->getLocale();
-        return $this->translations()->where('locale', $locale)->first();
+        return $this->hasMany(RoomTypeTranslation::class);
     }
-
+    
     /**
-     * Get the name attribute (translated).
+     * Override setTranslation method to update both the Spatie JSON field
+     * and the traditional translation records for backwards compatibility
      */
-    public function getNameAttribute(): ?string
+    public function setTranslation($key, $locale, $value)
     {
-        $translation = $this->getTranslation();
-        return $translation ? $translation->name : null;
-    }
-
-    /**
-     * Get the description attribute (translated).
-     */
-    public function getDescriptionAttribute(): ?string
-    {
-        $translation = $this->getTranslation();
-        return $translation ? $translation->description : null;
-    }
-
-    /**
-     * Get the size attribute (translated).
-     */
-    public function getSizeAttribute(): ?string
-    {
-        $translation = $this->getTranslation();
-        return $translation ? $translation->size : null;
-    }
-
-    /**
-     * Set translation for a specific locale.
-     */
-    public function setTranslation(string $attribute, string $locale, string $value): self
-    {
-        $translation = $this->getTranslation($locale);
-
-        if ($translation) {
-            $translation->update([$attribute => $value]);
-        } else {
-            $this->translations()->create([
-                'locale' => $locale,
-                $attribute => $value,
-            ]);
+        // Use the parent setTranslation method from Spatie Translatable
+        parent::setTranslation($key, $locale, $value);
+        
+        // Also update the old translation model if it exists
+        if (in_array($key, ['name', 'description', 'size', 'amenities_description'])) {
+            $this->translations()->updateOrCreate(
+                ['locale' => $locale],
+                [$key => $value]
+            );
         }
-
+        
         return $this;
     }
 
+    /**
+     * Register media collections for room type images
+     */
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('images')
@@ -112,6 +115,9 @@ class RoomType extends Model implements HasMedia
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/jpg', 'image/gif']);
     }
 
+    /**
+     * Register media conversions for different image sizes
+     */
     public function registerMediaConversions(?\Spatie\MediaLibrary\MediaCollections\Models\Media $media = null): void
     {
         $this->addMediaConversion('thumb')

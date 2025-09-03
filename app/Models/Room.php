@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RoomAvailabilityCacheService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,6 +31,24 @@ class Room extends Model
         'last_maintenance' => 'date',
     ];
 
+    protected static function booted()
+    {
+        // Invalidate cache when room is updated
+        static::updated(function ($room) {
+            if ($room->isDirty(['status', 'room_type_id'])) {
+                app(RoomAvailabilityCacheService::class)->invalidateRoomCache($room->id);
+            }
+        });
+
+        static::created(function ($room) {
+            app(RoomAvailabilityCacheService::class)->invalidateAllRoomCache();
+        });
+
+        static::deleted(function ($room) {
+            app(RoomAvailabilityCacheService::class)->invalidateRoomCache($room->id);
+        });
+    }
+
     /**
      * The room type this room belongs to.
      */
@@ -53,8 +72,18 @@ class Room extends Model
     {
         return $this->hasOne(Booking::class)
             ->whereIn('status', ['confirmed', 'checked_in'])
-            ->whereDate('check_in_date', '<=', today())
-            ->whereDate('check_out_date', '>=', today());
+            ->where(function($query) {
+                $query->where(function($q) {
+                    // Current stay: check-in date is today or earlier, check-out is today or later
+                    $q->whereDate('check_in_date', '<=', today())
+                      ->whereDate('check_out_date', '>=', today());
+                })->orWhere(function($q) {
+                    // Also include bookings that are checked in but might have extended stay
+                    $q->where('status', 'checked_in')
+                      ->whereDate('check_in_date', '<=', today());
+                });
+            })
+            ->orderByDesc('check_in_date');
     }
 
     /**
@@ -69,6 +98,16 @@ class Room extends Model
     }
 
     /**
+     * Get any active booking for this room (fallback method for onboard rooms).
+     */
+    public function activeBooking(): HasOne
+    {
+        return $this->hasOne(Booking::class)
+            ->whereIn('status', ['confirmed', 'checked_in'])
+            ->orderByDesc('check_in_date');
+    }
+
+    /**
      * Get status history for this room.
      */
     public function statusHistory(): HasMany
@@ -77,7 +116,7 @@ class Room extends Model
     }
 
     /**
-     * Check if the room is available for booking.
+     * Check if the room is available for booking with Redis caching.
      */
     public function isAvailable($checkIn = null, $checkOut = null): bool
     {
@@ -89,6 +128,14 @@ class Room extends Model
         // If no dates provided, just check status
         if (!$checkIn || !$checkOut) {
             return true;
+        }
+
+        // Check cache first
+        $cacheService = app(RoomAvailabilityCacheService::class);
+        $cachedResult = $cacheService->getRoomAvailability($this->id, $checkIn, $checkOut);
+        
+        if ($cachedResult !== null) {
+            return $cachedResult;
         }
 
         // Check if there are any confirmed bookings that overlap with the requested dates
@@ -109,7 +156,12 @@ class Room extends Model
             ->whereIn('status', ['confirmed', 'checked_in'])
             ->exists();
 
-        return !$hasConflictingBooking;
+        $isAvailable = !$hasConflictingBooking;
+        
+        // Cache the result
+        $cacheService->cacheRoomAvailability($this->id, $checkIn, $checkOut, $isAvailable);
+        
+        return $isAvailable;
     }
 
     /**

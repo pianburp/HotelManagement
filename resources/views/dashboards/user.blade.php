@@ -119,7 +119,7 @@
                                                 @elseif($booking->status === 'pending') bg-yellow-100 text-yellow-800
                                                 @else bg-red-100 text-red-800
                                                 @endif">
-                                                {{ ucfirst($booking->status) }}
+                                                {{ __(ucfirst($booking->status)) }}
                                             </span>
                                             <p class="text-sm font-medium mt-1">{{ money($booking->total_amount) }}</p>
                                         </div>

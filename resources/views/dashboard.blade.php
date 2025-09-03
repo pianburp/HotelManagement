@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
+            {{ __('My Dashboard') }}
         </h2>
     </x-slot>
 
@@ -48,7 +48,7 @@
                         <h3 class="text-lg font-semibold mb-4">{{ __('Your Upcoming Stay') }}</h3>
                         <div class="flex flex-wrap gap-4 items-center justify-between">
                             <div>
-                                <p class="text-gray-600">{{ $upcomingBooking->room->roomType->name }} - Room {{ $upcomingBooking->room->room_number }}</p>
+                                <p class="text-gray-600">{{ $upcomingBooking->room->roomType->name }} - {{ __('Room') }} {{ $upcomingBooking->room->room_number }}</p>
                                 <p class="text-sm text-gray-500">
                                     {{ __('Check-in') }}: {{ $upcomingBooking->check_in->format('M d, Y') }} |
                                     {{ __('Check-out') }}: {{ $upcomingBooking->check_out->format('M d, Y') }}

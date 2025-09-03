@@ -130,6 +130,53 @@
                         </x-primary-button>
                     </div>
                 </form>
+                
+                <!-- Waitlist Form -->
+                <div id="waitlist-container" class="mt-6 border-t pt-6 hidden">
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    {{ __('This room is not available for the selected dates. Would you like to join the waitlist?') }}
+                                </p>
+                                <p class="text-sm text-yellow-700 mt-1 font-semibold waitlist-date-display"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ route('user.waitlist.store') }}" class="space-y-6">
+                        @csrf
+                        <input type="hidden" name="room_type_id" value="{{ $room->roomType->id }}">
+                        <input type="hidden" name="check_in" id="waitlist_check_in">
+                        <input type="hidden" name="check_out" id="waitlist_check_out">
+                        <input type="hidden" name="guests" id="waitlist_guests">
+                        
+                        <div>
+                            <x-input-label for="waitlist_note" :value="__('Additional Notes')" />
+                            <textarea id="waitlist_note" name="note" rows="2" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                placeholder="{{ __('Any flexibility with your dates or special requirements') }}"></textarea>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input type="checkbox" id="waitlist_notification" name="notification" checked
+                                class="rounded border-gray-300 text-indigo-600 shadow-sm">
+                            <label for="waitlist_notification" class="ml-2 text-sm text-gray-600">
+                                {{ __('Notify me when this room becomes available') }}
+                            </label>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <x-primary-button>
+                                {{ __('Join Waitlist') }}
+                            </x-primary-button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -138,6 +185,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const checkInInput = document.getElementById('check_in');
             const checkOutInput = document.getElementById('check_out');
+            const guestsInput = document.getElementById('guests');
             const nightsSpan = document.querySelector('.nights-count');
             const subtotalSpan = document.querySelector('.subtotal-amount');
             const taxesSpan = document.querySelector('.taxes-amount');
@@ -145,6 +193,11 @@
             const checkoutError = document.getElementById('checkout-error');
             const form = document.querySelector('form');
             const submitButton = form.querySelector('button[type="submit"]');
+            
+            // Waitlist form inputs
+            const waitlistCheckIn = document.getElementById('waitlist_check_in');
+            const waitlistCheckOut = document.getElementById('waitlist_check_out');
+            const waitlistGuests = document.getElementById('waitlist_guests');
             
             const basePrice = {{ $room->roomType->base_price }};
             const taxRate = 0.10; // 10% tax rate
@@ -159,6 +212,9 @@
             function calculateTotal() {
                 const checkIn = new Date(checkInInput.value);
                 const checkOut = new Date(checkOutInput.value);
+                
+                // Sync values with waitlist form
+                syncWaitlistFormValues();
                 
                 // Validate date order
                 if (checkOut <= checkIn) {
@@ -261,6 +317,15 @@
                         availabilityError.textContent = errorMessage;
                         availabilityError.classList.remove('hidden');
                         disableSubmitButton('Dates not available');
+                        
+                        // Show waitlist option
+                        document.getElementById('waitlist-container').classList.remove('hidden');
+                        
+                        // Make sure the waitlist form has the latest values
+                        syncWaitlistFormValues();
+                    } else {
+                        // Hide waitlist option when room is available
+                        document.getElementById('waitlist-container').classList.add('hidden');
                     }
                 } catch (error) {
                     console.error('Error checking availability:', error);
@@ -268,6 +333,37 @@
                     availabilityError.textContent = 'Unable to verify availability. Please check dates.';
                     availabilityError.classList.remove('hidden');
                     enableSubmitButton();
+                    
+                    // Hide waitlist option on error
+                    document.getElementById('waitlist-container').classList.add('hidden');
+                }
+            }
+            
+            function syncWaitlistFormValues() {
+                // Sync form values to waitlist form
+                if (waitlistCheckIn && checkInInput.value) {
+                    waitlistCheckIn.value = checkInInput.value;
+                }
+                
+                if (waitlistCheckOut && checkOutInput.value) {
+                    waitlistCheckOut.value = checkOutInput.value;
+                }
+                
+                if (waitlistGuests && guestsInput.value) {
+                    waitlistGuests.value = guestsInput.value;
+                }
+                
+                // Update the date display in the waitlist notification
+                const dateDisplay = document.querySelector('.waitlist-date-display');
+                if (dateDisplay && checkInInput.value && checkOutInput.value) {
+                    const checkIn = new Date(checkInInput.value);
+                    const checkOut = new Date(checkOutInput.value);
+                    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+                    
+                    if (checkOut > checkIn) {
+                        const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+                        dateDisplay.textContent = `${checkIn.toLocaleDateString(undefined, options)} to ${checkOut.toLocaleDateString(undefined, options)} (${nights} nights)`;
+                    }
                 }
             }
             
@@ -275,9 +371,15 @@
             checkInInput.addEventListener('change', function() {
                 updateCheckoutMinDate();
                 calculateTotal();
+                syncWaitlistFormValues();
             });
             
-            checkOutInput.addEventListener('change', calculateTotal);
+            checkOutInput.addEventListener('change', function() {
+                calculateTotal();
+                syncWaitlistFormValues();
+            });
+            
+            guestsInput.addEventListener('change', syncWaitlistFormValues);
 
             // Prevent form submission with invalid dates or unavailable rooms
             if (form) {
@@ -300,8 +402,30 @@
                 });
             }
             
-            // Calculate on page load if dates are present
-            calculateTotal();
+            // Add validation for waitlist form
+            const waitlistForm = document.querySelector('#waitlist-container form');
+            if (waitlistForm) {
+                waitlistForm.addEventListener('submit', function(e) {
+                    const checkIn = new Date(waitlistCheckIn.value);
+                    const checkOut = new Date(waitlistCheckOut.value);
+                    
+                    if (checkOut <= checkIn) {
+                        e.preventDefault();
+                        alert('Check-out date must be after check-in date');
+                        return;
+                    }
+                    
+                    // Additional validation could be added here
+                });
+            }
+            
+            // Make sure to sync the waitlist form initially
+            document.addEventListener('DOMContentLoaded', function() {
+                syncWaitlistFormValues();
+                
+                // Calculate on page load if dates are present
+                calculateTotal();
+            });
         });
     </script>
 </x-app-layout>

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ $room->roomType->name }} - {{ __('Room') }} {{ $room->room_number }}
+            {{ $room->roomType->getTranslation('name', app()->getLocale()) }} - {{ __('Room') }} {{ $room->room_number }}
         </h2>
     </x-slot>
 
@@ -15,12 +15,12 @@
                             @forelse($room->roomType->media as $media)
                                 <div class="relative aspect-w-16 aspect-h-9">
                                     <img src="{{ $media->getUrl() }}" 
-                                         alt="{{ $room->roomType->name }}"
+                                         alt="{{ $room->roomType->getTranslation('name', app()->getLocale()) }}"
                                          class="object-cover rounded-lg">
                                 </div>
                             @empty
                                 <div class="col-span-2 bg-gray-100 rounded-lg p-4 text-center">
-                                    {{ __('No images available') }}
+                                    {{ __('No image available') }}
                                 </div>
                             @endforelse
                         </div>
@@ -29,20 +29,20 @@
                     <!-- Room Details -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div class="md:col-span-2">
-                            <h3 class="text-2xl font-bold mb-4">{{ __('Room Details') }}</h3>
+                            <h3 class="text-2xl font-bold mb-4">{{ __('Booking Details') }}</h3>
                             
                             <!-- Room Specific Information -->
                             <div class="grid grid-cols-2 gap-4 mb-6">
                                 <div>
-                                    <p class="text-gray-600">{{ __('Floor Number') }}</p>
+                                    <p class="text-gray-600">{{ __('Floor') }}</p>
                                     <p class="font-semibold">{{ $room->floor_number }}</p>
                                 </div>
                                 <div>
-                                    <p class="text-gray-600">{{ __('Room Size') }}</p>
+                                    <p class="text-gray-600">{{ __('Size') }}</p>
                                     <p class="font-semibold">{{ $room->size }} m²</p>
                                 </div>
                                 <div>
-                                    <p class="text-gray-600">{{ __('Room Status') }}</p>
+                                    <p class="text-gray-600">{{ __('Status') }}</p>
                                     <p class="font-semibold">{{ __(ucfirst($room->status)) }}</p>
                                 </div>
                                 <div>
@@ -59,7 +59,7 @@
                             @endif
 
                             <div class="prose max-w-none">
-                                {!! $room->roomType->description !!}
+                                {!! $room->roomType->getTranslation('description', app()->getLocale()) !!}
                             </div>
 
                             <!-- Amenities -->
@@ -143,14 +143,14 @@
                                     </form>
                                 @else
                                     <div class="text-center p-4 bg-gray-100 rounded-lg">
-                                        <p class="text-gray-600 mb-2">{{ __('This room is currently') }} {{ strtolower($room->getAvailabilityStatus()) }}</p>
+                                        <p class="text-gray-600 mb-2">{{ __('This room is currently unavailable') }}</p>
                                         <p class="text-sm text-gray-500">{{ __('Room Status') }}: {{ __(ucfirst($room->status)) }}</p>
                                     </div>
                                 @endif
 
                                 @if($room->status !== 'available')
                                     <div class="mt-4 text-center">
-                                        <p class="text-gray-600 mb-2">{{ __('Room not available') }} - {{ $room->getAvailabilityStatus() }}</p>
+                                        <p class="text-gray-600 mb-2">{{ __('Room not available') }}</p>
                                         <x-secondary-button onclick="window.location='{{ route('user.waitlist.create', ['room_type_id' => $room->roomType->id]) }}'">
                                             {{ __('Join Waitlist') }}
                                         </x-secondary-button>
