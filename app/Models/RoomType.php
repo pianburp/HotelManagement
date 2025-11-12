@@ -8,18 +8,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-use Spatie\Translatable\HasTranslations;
 
 class RoomType extends Model implements HasMedia
 {
-    use HasFactory, InteractsWithMedia, HasTranslations;
-
-    public $translatable = [
-        'name',
-        'description',
-        'size',
-        'amenities_description',
-    ];
+    use HasFactory, InteractsWithMedia;
 
     protected $fillable = [
         'code',
@@ -27,10 +19,6 @@ class RoomType extends Model implements HasMedia
         'max_occupancy',
         'amenities',
         'is_active',
-        'name',
-        'description',
-        'size',
-        'amenities_description',
     ];
 
     protected $casts = [
@@ -43,10 +31,7 @@ class RoomType extends Model implements HasMedia
     {
         // Invalidate cache when room type changes
         static::updated(function ($roomType) {
-            if (
-                $roomType->isDirty(['base_price', 'max_occupancy', 'amenities', 'is_active']) ||
-                collect($roomType->translatable)->some(fn($field) => $roomType->isDirty($field))
-            ) {
+            if ($roomType->isDirty(['base_price', 'max_occupancy', 'amenities', 'is_active'])) {
                 app(RoomAvailabilityCacheService::class)->invalidateAllRoomCache();
             }
         });
@@ -58,6 +43,66 @@ class RoomType extends Model implements HasMedia
         static::deleted(function () {
             app(RoomAvailabilityCacheService::class)->invalidateAllRoomCache();
         });
+    }
+
+    /**
+     * Get the translations for this room type.
+     */
+    public function translations(): HasMany
+    {
+        return $this->hasMany(RoomTypeTranslation::class);
+    }
+
+    /**
+     * Name accessor for compatibility with existing views.
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->getName();
+    }
+
+    /**
+     * Get a translated field value for a specific locale.
+     */
+    public function getTranslatedField(string $field, string $locale = 'en'): ?string
+    {
+        if (!$this->relationLoaded('translations') || !$this->translations) {
+            $this->load('translations');
+        }
+        
+        return $this->translations?->where('locale', $locale)->first()?->{$field};
+    }
+
+    /**
+     * Get the name for a specific locale.
+     */
+    public function getName(string $locale = 'en'): string
+    {
+        return $this->getTranslatedField('name', $locale) ?? $this->code;
+    }
+
+    /**
+     * Get the description for a specific locale.
+     */
+    public function getDescription(string $locale = 'en'): ?string
+    {
+        return $this->getTranslatedField('description', $locale);
+    }
+
+    /**
+     * Get a translation for a specific field and locale.
+     * This method provides compatibility with the view layer.
+     */
+    public function getTranslation(string $field, string $locale = 'en'): string
+    {
+        $translation = $this->getTranslatedField($field, $locale);
+        
+        // Fallback to code if name translation is not found
+        if ($field === 'name' && !$translation) {
+            return $this->code;
+        }
+        
+        return $translation ?? '';
     }
 
     /**

@@ -21,9 +21,9 @@ class ReportController extends Controller
         
         // Fetch all rooms with their current status and detailed booking information
         $rooms = Room::with([
-            'roomType', 
+            'roomType.translations', 
             'bookings' => function($query) use ($today) {
-                $query->where('status', 'confirmed')
+                $query->whereIn('status', ['confirmed', 'checked_in'])
                       ->where('check_in_date', '<=', $today)
                       ->where('check_out_date', '>=', $today);
             },
@@ -34,13 +34,24 @@ class ReportController extends Controller
         $occupancyData = $rooms->map(function ($room) use ($today) {
             $currentBooking = $room->bookings->first();
             
+            // Determine actual room status based on booking
+            $actualStatus = $room->status;
+            if ($currentBooking) {
+                if ($currentBooking->status === 'checked_in') {
+                    $actualStatus = 'onboard'; // Guest is checked in
+                } elseif ($currentBooking->status === 'confirmed') {
+                    $actualStatus = 'reserved'; // Booking confirmed but not checked in yet
+                }
+            }
+            // If no current booking, keep the original room status (available, closed, etc.)
+            
             return [
                 'room_number' => $room->room_number,
                 'room_type' => $room->roomType->name ?? 'N/A',
-                'status' => $room->status,
-                'guest_name' => $currentBooking ? ($currentBooking->guest_name ?? $currentBooking->user->name ?? 'N/A') : null,
-                'guest_email' => $currentBooking ? ($currentBooking->guest_email ?? $currentBooking->user->email ?? 'N/A') : null,
-                'guest_phone' => $currentBooking ? ($currentBooking->guest_phone ?? $currentBooking->user->phone ?? 'N/A') : null,
+                'status' => $actualStatus,
+                'guest_name' => $currentBooking ? ($currentBooking->guest_name ?? $currentBooking->user->name ?? null) : null,
+                'guest_email' => $currentBooking ? ($currentBooking->guest_email ?? $currentBooking->user->email ?? null) : null,
+                'guest_phone' => $currentBooking ? ($currentBooking->guest_phone ?? $currentBooking->user->phone ?? null) : null,
                 'guests_count' => $currentBooking ? $currentBooking->guests_count : null,
                 'check_in_date' => $currentBooking ? $currentBooking->check_in_date->format('M d, Y') : null,
                 'check_out_date' => $currentBooking ? $currentBooking->check_out_date->format('M d, Y') : null,
@@ -48,16 +59,16 @@ class ReportController extends Controller
                 'special_requests' => $currentBooking ? $currentBooking->special_requests : null,
                 'total_amount' => $currentBooking ? $currentBooking->total_amount : null,
                 'booking_source' => $currentBooking ? $currentBooking->booking_source : null,
-                'days_remaining' => $currentBooking ? abs($currentBooking->check_out_date->diffInDays($today)) : null,
+                'days_remaining' => $currentBooking ? $currentBooking->check_out_date->diffInDays($today) : null,
             ];
         });
 
-        // Calculate statistics
-        $totalRooms = $rooms->count();
-        $occupiedRooms = $rooms->where('status', 'onboard')->count();
-        $availableRooms = $rooms->where('status', 'available')->count();
-        $reservedRooms = $rooms->where('status', 'reserved')->count();
-        $closedRooms = $rooms->where('status', 'closed')->count();
+        // Calculate statistics based on actual occupancy data
+        $totalRooms = $occupancyData->count();
+        $occupiedRooms = $occupancyData->where('status', 'onboard')->count();
+        $availableRooms = $occupancyData->where('status', 'available')->count();
+        $reservedRooms = $occupancyData->where('status', 'reserved')->count();
+        $closedRooms = $occupancyData->where('status', 'closed')->count();
         
         $occupancyRate = $totalRooms > 0 ? round(($occupiedRooms / $totalRooms) * 100) : 0;
 

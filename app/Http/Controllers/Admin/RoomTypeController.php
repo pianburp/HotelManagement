@@ -21,7 +21,7 @@ class RoomTypeController extends Controller
      */
     public function index()
     {
-        $roomTypes = RoomType::with(['media'])
+        $roomTypes = RoomType::with(['media', 'translations'])
             ->withCount(['rooms'])
             ->paginate(10);
 
@@ -56,19 +56,22 @@ class RoomTypeController extends Controller
 
         DB::beginTransaction();
         try {
-            $roomType = new RoomType([
+            $roomType = RoomType::create([
                 'code' => $request->code,
                 'base_price' => $request->base_price,
                 'max_occupancy' => $request->max_occupancy,
                 'amenities' => array_filter($request->amenities ?? []), // Remove empty values
                 'is_active' => true,
+            ]);
+            
+            // Create translation
+            $roomType->translations()->create([
+                'locale' => 'en',
                 'name' => $request->name,
                 'description' => $request->description,
                 'size' => $request->size,
                 'amenities_description' => $request->amenities_description,
             ]);
-            
-            $roomType->save();
 
             // Handle image uploads
             if ($request->hasFile('images')) {
@@ -79,7 +82,6 @@ class RoomTypeController extends Controller
             }
 
             DB::commit();
-            Cache::tags(['room_types'])->flush();
 
             return redirect()->route('admin.room-types.index')
                            ->with('success', 'Room type created successfully.');
@@ -111,7 +113,35 @@ class RoomTypeController extends Controller
      */
     public function edit(RoomType $roomType)
     {
-        $roomType->load(['media']);
+        // Load relationships using fresh query to ensure they're loaded properly
+        $roomType = RoomType::with(['media', 'translations'])->findOrFail($roomType->id);
+        
+        // Ensure there's at least an English translation
+        $englishTranslation = $roomType->translations()->where('locale', 'en')->first();
+        if (!$englishTranslation) {
+            // Create a default translation if none exists
+            $roomType->translations()->create([
+                'locale' => 'en',
+                'name' => $roomType->code,
+                'description' => 'Room type ' . $roomType->code,
+                'size' => null,
+                'amenities_description' => null,
+            ]);
+            // Reload to include the new translation
+            $roomType = RoomType::with(['media', 'translations'])->findOrFail($roomType->id);
+        }
+        
+        // Debug: Check if translations are loaded properly
+        if (config('app.debug')) {
+            \Log::info('Room Type Edit Debug', [
+                'room_type_id' => $roomType->id,
+                'translations_count' => $roomType->translations->count(),
+                'english_translation' => $roomType->translations->where('locale', 'en')->first()?->toArray(),
+                'getName_result' => $roomType->getName(),
+                'getTranslatedField_name' => $roomType->getTranslatedField('name'),
+            ]);
+        }
+        
         return view('admin.room-types.edit', compact('roomType'));
     }
 
@@ -138,19 +168,32 @@ class RoomTypeController extends Controller
 
         DB::beginTransaction();
         try {
-            $roomType->code = $request->code;
-            $roomType->base_price = $request->base_price;
-            $roomType->max_occupancy = $request->max_occupancy;
-            $roomType->amenities = array_filter($request->amenities ?? []); // Remove empty values
-            $roomType->is_active = (bool)$request->is_active;
+            $roomType->update([
+                'code' => $request->code,
+                'base_price' => $request->base_price,
+                'max_occupancy' => $request->max_occupancy,
+                'amenities' => array_filter($request->amenities ?? []), // Remove empty values
+                'is_active' => (bool)$request->is_active,
+            ]);
             
-            // Update translatable fields directly
-            $roomType->name = $request->name;
-            $roomType->description = $request->description;
-            $roomType->size = $request->size;
-            $roomType->amenities_description = $request->amenities_description;
-            
-            $roomType->save();
+            // Update translation
+            $translation = $roomType->translations()->where('locale', 'en')->first();
+            if ($translation) {
+                $translation->update([
+                    'name' => $request->name,
+                    'description' => $request->description,
+                    'size' => $request->size,
+                    'amenities_description' => $request->amenities_description,
+                ]);
+            } else {
+                $roomType->translations()->create([
+                    'locale' => 'en',
+                    'name' => $request->name,
+                    'description' => $request->description,
+                    'size' => $request->size,
+                    'amenities_description' => $request->amenities_description,
+                ]);
+            }
 
             // Remove selected images
             if ($request->has('remove_images') && is_array($request->remove_images)) {
@@ -174,7 +217,6 @@ class RoomTypeController extends Controller
             }
 
             DB::commit();
-            Cache::tags(['room_types'])->flush();
 
             return redirect()->route('admin.room-types.index')
                            ->with('success', 'Room type updated successfully.');

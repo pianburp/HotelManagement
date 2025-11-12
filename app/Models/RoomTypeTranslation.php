@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RoomTypeTranslation extends Model
 {
-    public $timestamps = false;
-
     protected $fillable = [
         'room_type_id',
         'locale',

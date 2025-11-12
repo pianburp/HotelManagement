@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Edit Room Type') }}: {{ $roomType->name }}
+                {{ __('Edit Room Type') }}: {{ $roomType->getName() }}
             </h2>
             <div class="flex space-x-2">
                 <x-secondary-button onclick="window.location='{{ route('admin.room-types.show', $roomType) }}'">
@@ -93,11 +93,9 @@
                                         <div class="mt-2 grid grid-cols-2 gap-4">
                                             @foreach($roomType->getMedia('images') as $image)
                                                 <div class="relative group transition-all duration-200">
-                                                    <img src="{{ $image->getUrl('thumb') }}" 
-                                                         alt="{{ $roomType->name }}" 
-                                                         class="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm group-hover:shadow-md transition-shadow duration-200">
-                                                    
-                                                    <!-- Image info overlay -->
+                                    <img src="{{ $image->getUrl('thumb') }}" 
+                                         alt="{{ $roomType->getName() }}" 
+                                         class="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm group-hover:shadow-md transition-shadow duration-200">                                                    <!-- Image info overlay -->
                                                     <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                                         <p class="text-white text-xs truncate">{{ $image->name }}</p>
                                                         <p class="text-white text-xs">{{ $image->human_readable_size }}</p>
@@ -147,7 +145,7 @@
                                 <div>
                                     <x-input-label for="name" :value="__('Name')" />
                                     <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" 
-                                                :value="old('name', $roomType->name)" required />
+                                                :value="old('name', $roomType->translations->where('locale', 'en')->first()?->name ?? $roomType->getTranslatedField('name'))" required />
                                     <x-input-error :messages="$errors->get('name')" class="mt-2" />
                                 </div>
 
@@ -156,7 +154,7 @@
                                     <x-input-label for="description" :value="__('Description')" />
                                     <textarea id="description" name="description" rows="4" 
                                             class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" 
-                                            required>{{ old('description', $roomType->description) }}</textarea>
+                                            required>{{ old('description', $roomType->translations->where('locale', 'en')->first()?->description ?? $roomType->getTranslatedField('description')) }}</textarea>
                                     <x-input-error :messages="$errors->get('description')" class="mt-2" />
                                 </div>
 
@@ -164,7 +162,7 @@
                                 <div>
                                     <x-input-label for="size" :value="__('Size')" />
                                     <x-text-input id="size" class="block mt-1 w-full" type="text" name="size" 
-                                                :value="old('size', $roomType->size)" 
+                                                :value="old('size', $roomType->translations->where('locale', 'en')->first()?->size ?? $roomType->getTranslatedField('size'))" 
                                                 placeholder="{{ __('e.g., 25 sqm') }}" />
                                     <x-input-error :messages="$errors->get('size')" class="mt-2" />
                                 </div>
@@ -206,7 +204,7 @@
                                     <x-input-label for="amenities_description" :value="__('Amenities Description')" />
                                     <textarea id="amenities_description" name="amenities_description" rows="3" 
                                             class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" 
-                                            placeholder="{{ __('Additional description about amenities...') }}">{{ old('amenities_description', $roomType->amenities_description) }}</textarea>
+                                            placeholder="{{ __('Additional description about amenities...') }}">{{ old('amenities_description', $roomType->translations->where('locale', 'en')->first()?->amenities_description ?? $roomType->getTranslatedField('amenities_description')) }}</textarea>
                                     <x-input-error :messages="$errors->get('amenities_description')" class="mt-2" />
                                 </div>
                             </div>

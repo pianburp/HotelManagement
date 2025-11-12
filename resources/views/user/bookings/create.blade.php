@@ -125,7 +125,7 @@
                         <x-secondary-button type="button" onclick="window.history.back()" class="mr-3">
                             {{ __('Cancel') }}
                         </x-secondary-button>
-                        <x-primary-button>
+                        <x-primary-button id="confirm-booking-btn" type="submit">
                             {{ __('Confirm Booking') }}
                         </x-primary-button>
                     </div>
@@ -192,7 +192,7 @@
             const totalSpan = document.querySelector('.total-amount');
             const checkoutError = document.getElementById('checkout-error');
             const form = document.querySelector('form');
-            const submitButton = form.querySelector('button[type="submit"]');
+            const submitButton = document.getElementById('confirm-booking-btn');
             
             // Waitlist form inputs
             const waitlistCheckIn = document.getElementById('waitlist_check_in');
@@ -202,6 +202,11 @@
             const basePrice = {{ $room->roomType->base_price }};
             const taxRate = 0.10; // 10% tax rate
             const roomId = {{ $room->id }};
+            
+            // Initially disable the submit button until availability is checked
+            if (submitButton) {
+                disableSubmitButton('Checking availability...');
+            }
             
             // Debounce function to limit API calls
             let availabilityCheckTimeout;
@@ -274,13 +279,16 @@
                 
                 // Check availability with server only if we have valid dates
                 if (nights > 0) {
+                    // Show loading state
+                    disableSubmitButton('Checking availability...');
+                    
                     // Debounce the availability check to avoid too many API calls
                     clearTimeout(availabilityCheckTimeout);
                     availabilityCheckTimeout = setTimeout(() => {
                         checkAvailability(checkInInput.value, checkOutInput.value);
                     }, 300); // Wait 300ms before checking
                 } else {
-                    enableSubmitButton();
+                    disableSubmitButton('Please select valid dates');
                 }
             }
 
@@ -306,7 +314,22 @@
                 if (submitButton) {
                     submitButton.disabled = true;
                     submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    submitButton.classList.remove('hover:bg-gray-900');
                     submitButton.title = reason;
+                    
+                    // Update button text to show reason
+                    const originalText = submitButton.textContent;
+                    if (reason === 'Checking availability...') {
+                        submitButton.innerHTML = `
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            ${reason}
+                        `;
+                    } else {
+                        submitButton.textContent = 'Not Available';
+                    }
                 }
             }
             
@@ -314,7 +337,9 @@
                 if (submitButton) {
                     submitButton.disabled = false;
                     submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    submitButton.classList.add('hover:bg-gray-900');
                     submitButton.title = '';
+                    submitButton.innerHTML = '{{ __("Confirm Booking") }}';
                 }
             }
             
@@ -335,10 +360,12 @@
                     const data = await response.json();
                     
                     if (data.available) {
+                        // Room is available - enable booking
                         availabilityError.classList.add('hidden');
                         document.getElementById('waitlist-container').classList.add('hidden');
                         enableSubmitButton();
                     } else {
+                        // Room is not available - disable booking and show waitlist
                         let errorMessage = 'Selected dates are not available.';
                         if (data.conflicts && data.conflicts.length > 0) {
                             const conflictDates = data.conflicts.map(conflict => 
@@ -349,7 +376,7 @@
                         
                         availabilityError.textContent = errorMessage;
                         availabilityError.classList.remove('hidden');
-                        disableSubmitButton('Dates not available');
+                        disableSubmitButton('Room not available for selected dates');
                         
                         // Show waitlist option
                         document.getElementById('waitlist-container').classList.remove('hidden');
@@ -359,10 +386,10 @@
                     }
                 } catch (error) {
                     console.error('Error checking availability:', error);
-                    // On error, allow submission but show warning
-                    availabilityError.textContent = 'Unable to verify availability. Please check dates.';
+                    // On error, disable booking and show error message
+                    availabilityError.textContent = 'Unable to verify availability. Please try again or contact support.';
                     availabilityError.classList.remove('hidden');
-                    enableSubmitButton();
+                    disableSubmitButton('Unable to verify availability');
                     
                     // Hide waitlist option on error
                     document.getElementById('waitlist-container').classList.add('hidden');
@@ -423,6 +450,9 @@
             // Initial calculation on page load
             if (checkInInput.value && checkOutInput.value) {
                 calculateTotal();
+            } else {
+                // If no dates are set, keep button disabled
+                disableSubmitButton('Please select check-in and check-out dates');
             }
 
             // Prevent form submission with invalid dates or unavailable rooms
@@ -435,14 +465,19 @@
                         e.preventDefault();
                         if (checkoutError) checkoutError.classList.remove('hidden');
                         checkOutInput.focus();
+                        alert('Check-out date must be after check-in date.');
                         return;
                     }
                     
                     if (submitButton.disabled) {
                         e.preventDefault();
-                        alert('Please select valid available dates before proceeding.');
+                        const reason = submitButton.title || 'Room is not available for selected dates';
+                        alert(`Cannot proceed with booking: ${reason}`);
                         return;
                     }
+                    
+                    // Show loading state during form submission
+                    disableSubmitButton('Processing booking...');
                 });
             }
             
