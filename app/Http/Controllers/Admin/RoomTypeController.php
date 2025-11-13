@@ -133,10 +133,12 @@ class RoomTypeController extends Controller
         
         // Debug: Check if translations are loaded properly
         if (config('app.debug')) {
+            $translations = $roomType->translations ?? collect();
+
             \Log::info('Room Type Edit Debug', [
                 'room_type_id' => $roomType->id,
-                'translations_count' => $roomType->translations->count(),
-                'english_translation' => $roomType->translations->where('locale', 'en')->first()?->toArray(),
+                'translations_count' => $translations->count(),
+                'english_translation' => $translations->where('locale', 'en')->first()?->toArray(),
                 'getName_result' => $roomType->getName(),
                 'getTranslatedField_name' => $roomType->getTranslatedField('name'),
             ]);
@@ -161,7 +163,7 @@ class RoomTypeController extends Controller
             'amenities_description' => 'nullable|string',
             'amenities' => 'nullable|array',
             'amenities.*' => 'nullable|string|max:255',
-            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:20,480', // 20MB max
             'remove_images' => 'nullable|array',
             'remove_images.*' => 'integer|exists:media,id',
         ]);

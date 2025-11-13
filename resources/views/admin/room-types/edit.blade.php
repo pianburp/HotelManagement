@@ -19,6 +19,10 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    @php
+                        $translations = $roomType->translations ?? collect();
+                    @endphp
+
                     <form method="POST" action="{{ route('admin.room-types.update', $roomType) }}" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
@@ -145,7 +149,7 @@
                                 <div>
                                     <x-input-label for="name" :value="__('Name')" />
                                     <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" 
-                                                :value="old('name', $roomType->translations->where('locale', 'en')->first()?->name ?? $roomType->getTranslatedField('name'))" required />
+                                                :value="old('name', $translations->where('locale', 'en')->first()?->name ?? $roomType->getTranslatedField('name'))" required />
                                     <x-input-error :messages="$errors->get('name')" class="mt-2" />
                                 </div>
 
@@ -154,7 +158,7 @@
                                     <x-input-label for="description" :value="__('Description')" />
                                     <textarea id="description" name="description" rows="4" 
                                             class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" 
-                                            required>{{ old('description', $roomType->translations->where('locale', 'en')->first()?->description ?? $roomType->getTranslatedField('description')) }}</textarea>
+                                            required>{{ old('description', $translations->where('locale', 'en')->first()?->description ?? $roomType->getTranslatedField('description')) }}</textarea>
                                     <x-input-error :messages="$errors->get('description')" class="mt-2" />
                                 </div>
 
@@ -162,7 +166,7 @@
                                 <div>
                                     <x-input-label for="size" :value="__('Size')" />
                                     <x-text-input id="size" class="block mt-1 w-full" type="text" name="size" 
-                                                :value="old('size', $roomType->translations->where('locale', 'en')->first()?->size ?? $roomType->getTranslatedField('size'))" 
+                                                :value="old('size', $translations->where('locale', 'en')->first()?->size ?? $roomType->getTranslatedField('size'))" 
                                                 placeholder="{{ __('e.g., 25 sqm') }}" />
                                     <x-input-error :messages="$errors->get('size')" class="mt-2" />
                                 </div>
@@ -204,7 +208,7 @@
                                     <x-input-label for="amenities_description" :value="__('Amenities Description')" />
                                     <textarea id="amenities_description" name="amenities_description" rows="3" 
                                             class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" 
-                                            placeholder="{{ __('Additional description about amenities...') }}">{{ old('amenities_description', $roomType->translations->where('locale', 'en')->first()?->amenities_description ?? $roomType->getTranslatedField('amenities_description')) }}</textarea>
+                                            placeholder="{{ __('Additional description about amenities...') }}">{{ old('amenities_description', $translations->where('locale', 'en')->first()?->amenities_description ?? $roomType->getTranslatedField('amenities_description')) }}</textarea>
                                     <x-input-error :messages="$errors->get('amenities_description')" class="mt-2" />
                                 </div>
                             </div>

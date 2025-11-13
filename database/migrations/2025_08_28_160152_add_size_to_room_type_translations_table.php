@@ -21,8 +21,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('room_type_translations', function (Blueprint $table) {
-            $table->dropColumn('size');
-        });
+        if (Schema::hasTable('room_type_translations')) {
+            try {
+                Schema::table('room_type_translations', function (Blueprint $table) {
+                    $table->dropColumn('size');
+                });
+            } catch (\Exception $e) {
+                // If the column doesn't exist or drop fails during rollback, ignore to allow other rollbacks to continue.
+            }
+        }
     }
 };
