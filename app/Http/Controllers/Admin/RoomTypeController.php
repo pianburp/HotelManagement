@@ -163,7 +163,7 @@ class RoomTypeController extends Controller
             'amenities_description' => 'nullable|string',
             'amenities' => 'nullable|array',
             'amenities.*' => 'nullable|string|max:255',
-            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:20,480', // 20MB max
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:20480', // 20MB max
             'remove_images' => 'nullable|array',
             'remove_images.*' => 'integer|exists:media,id',
         ]);
